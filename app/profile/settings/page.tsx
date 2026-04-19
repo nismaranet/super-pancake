@@ -124,9 +124,9 @@ export default function SettingsPage() {
 
       const file = event.target.files[0];
 
-      // Validasi Ukuran (Max 1MB)
-      if (file.size > 1 * 1024 * 1024)
-        throw new Error('Ukuran gambar maksimal 1MB.');
+      // Validasi Ukuran (Max 2MB)
+      if (file.size > 2 * 1024 * 1024)
+        throw new Error('Ukuran gambar maksimal 2MB.');
 
       // Gunakan fungsi Upload R2 (folder 'avatars' atau 'banners')
       const publicUrl = await uploadToR2(
