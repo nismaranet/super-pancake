@@ -1,694 +1,1009 @@
 'use client';
 
-// 1. Tambahkan import `use` dari 'react'
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import {
   Trophy,
   ShieldCheck,
   Activity,
-  Medal,
-  ChevronRight,
-  Settings,
-  Car as CarIcon,
-  Calendar,
-  Flag,
-  Map as MapIcon,
-  TrendingUp,
-  ChevronLeft,
+  Wallet,
+  Gamepad2,
   AlertTriangle,
+  Route,
+  Settings,
+  Flag,
+  Clock,
+  History,
+  Timer,
+  CalendarDays,
+  Car,
+  TrendingUp,
+  TrendingDown,
+  MapPin,
+  ChevronDown,
+  CheckCircle2,
 } from 'lucide-react';
 
-// --- HELPER: RANK SYSTEM ---
+// Helpers: Rank Label & Warna berdasarkan SR
 const getRankDetails = (sr: number) => {
   if (sr >= 80)
     return {
       label: 'ELITE',
-      color: 'text-cyan-400',
-      border: 'border-cyan-400/50',
-      bg: 'bg-cyan-400/10',
+      color: 'text-cyan-500',
+      border: 'border-cyan-500/50',
+      bg: 'bg-cyan-500/5',
     };
   if (sr >= 60)
     return {
       label: 'PRO',
-      color: 'text-purple-400',
-      border: 'border-purple-400/50',
-      bg: 'bg-purple-400/10',
+      color: 'text-[var(--accent)]',
+      border: 'border-[var(--accent)]',
+      bg: 'bg-[var(--accent)]/5',
     };
   if (sr >= 40)
     return {
       label: 'SEMI-PRO',
-      color: 'text-blue-400',
-      border: 'border-blue-400/50',
-      bg: 'bg-blue-400/10',
+      color: 'text-blue-500',
+      border: 'border-blue-500/50',
+      bg: 'bg-blue-500/5',
     };
   if (sr >= 20)
     return {
       label: 'AMATEUR',
-      color: 'text-slate-300',
-      border: 'border-slate-300/50',
-      bg: 'bg-slate-300/10',
+      color: 'text-emerald-500',
+      border: 'border-emerald-500/50',
+      bg: 'bg-emerald-500/5',
     };
   return {
     label: 'ROOKIE',
-    color: 'text-orange-400',
-    border: 'border-orange-400/50',
-    bg: 'bg-orange-400/10',
+    color: 'text-[var(--muted)]',
+    border: 'border-[var(--card-border)]',
+    bg: 'bg-[var(--card)]',
   };
 };
 
-// 2. Ubah tipe params menjadi Promise
-export default function PublicProfilePage({
+// Formatting helpers
+const formatPlayingTime = (time: number) => {
+  if (!time) return '0h 0m';
+  const totalSeconds = time > 10000000 ? Math.floor(time / 1000) : Number(time);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  return `${h}h ${m}m`;
+};
+
+const formatLapTime = (ms: number) => {
+  if (!ms) return '--:--.---';
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const milliseconds = ms % 1000;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+};
+
+const formatDate = (dateString: string) => {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateString));
+};
+
+const formatModelName = (str: string) => {
+  if (!str) return 'Unknown';
+  return str
+    .split(/[_|-]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const HISTORY_PER_PAGE = 10;
+const PASSED_PER_PAGE = 5;
+
+export default function ProfilePage({
   params,
 }: {
   params: Promise<{ username: string }>;
 }) {
+  const resolvedParams = use(params);
+  const username = resolvedParams.username;
   const router = useRouter();
 
-  // 3. Unwrap (buka) params menggunakan `use()`
-  const resolvedParams = use(params);
-  const currentUsername = resolvedParams.username;
-
-  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [isOwner, setIsOwner] = useState(false);
+  const [trackMap, setTrackMap] = useState<Record<string, string>>({});
+  const [carMap, setCarMap] = useState<Record<string, string>>({});
 
-  const [srHistory, setSrHistory] = useState<any[]>([]);
-  const [eventAttendance, setEventAttendance] = useState<any[]>([]);
-  const [carAffinity, setCarAffinity] = useState<any[]>([]);
-  const [trackRecords, setTrackRecords] = useState<any[]>([]);
-  const [careerStats, setCareerStats] = useState({
-    starts: 0,
-    wins: 0,
-    podiums: 0,
-  });
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'history' | 'hotlaps' | 'events'
+  >('overview');
 
-  // --- PAGINATION STATES ---
-  const [carPage, setCarPage] = useState(1);
-  const [trackPage, setTrackPage] = useState(1);
-  const [eventPage, setEventPage] = useState(1);
-  const [logPage, setLogPage] = useState(1);
+  // Lazy Load History States
+  const [raceHistory, setRaceHistory] = useState<any[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const ITEMS_PER_PAGE_CARS = 6;
-  const ITEMS_PER_PAGE_TRACKS = 4;
-  const ITEMS_PER_PAGE_EVENTS = 5;
-  const ITEMS_PER_PAGE_LOGS = 5;
+  // Lazy Load Passed Events States
+  const [passedEvents, setPassedEvents] = useState<any[]>([]);
+  const [passedPage, setPassedPage] = useState(1);
+  const [hasMorePassed, setHasMorePassed] = useState(true);
+  const [loadingMorePassed, setLoadingMorePassed] = useState(false);
+
+  const [hotlaps, setHotlaps] = useState<any[]>([]);
+  const [trackStats, setTrackStats] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchCompleteProfile();
-    // 4. Gunakan currentUsername yang sudah di-unwrap pada dependency array
-  }, [currentUsername]);
-
-  async function fetchCompleteProfile() {
-    try {
+    async function fetchData() {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      // 5. Gunakan currentUsername pada query Supabase
+      if (user) {
+        const { data: currentUserProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (currentUserProfile) setCurrentUser(currentUserProfile);
+      }
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('username', currentUsername)
+        .eq('username', username)
         .single();
 
       if (profileError || !profileData) {
-        router.push('/');
+        setProfile(null);
+        setLoading(false);
         return;
       }
-
       setProfile(profileData);
 
-      if (session?.user?.id === profileData.id) {
-        setIsOwner(true);
+      // MENGGUNAKAN NAMA KOLOM SQL YANG BENAR: track_model DAN model_key
+      const { data: tracksData } = await supabase
+        .from('tracks')
+        .select('track_model, name, uri');
+      const { data: carsData } = await supabase
+        .from('cars')
+        .select('model_key, name');
+
+      const tMap: Record<string, string> = {};
+      const cMap: Record<string, string> = {};
+
+      tracksData?.forEach((t: any) => (tMap[t.track_model] = t.name));
+      carsData?.forEach((c: any) => (cMap[c.model_key] = c.name));
+
+      setTrackMap(tMap);
+      setCarMap(cMap);
+
+      const steamGuid = profileData.steam_guid;
+      const userId = profileData.id;
+
+      if (steamGuid || userId) {
+        const [historyRes, hotlapsRes, statsRes, eventsRes, passedRes] =
+          await Promise.all([
+            steamGuid
+              ? supabase
+                  .from('race_earnings_history')
+                  .select('*, events(title)')
+                  .eq('steam_guid', steamGuid)
+                  .order('created_at', { ascending: false })
+                  .range(0, HISTORY_PER_PAGE - 1)
+              : Promise.resolve({ data: [] }),
+            steamGuid
+              ? supabase
+                  .from('hotlap_data')
+                  .select('*')
+                  .eq('driver_guid', steamGuid)
+                  .order('updated_at', { ascending: false })
+              : Promise.resolve({ data: [] }),
+            steamGuid
+              ? supabase
+                  .from('driver_track_stats')
+                  .select('*')
+                  .eq('driver_guid', steamGuid)
+                  .order('total_laps', { ascending: false })
+              : Promise.resolve({ data: [] }),
+            userId
+              ? supabase
+                  .from('event_participants')
+                  .select('*, events(*)')
+                  .eq('user_id', userId)
+                  .order('created_at', { ascending: false })
+              : Promise.resolve({ data: [] }),
+            steamGuid
+              ? supabase
+                  .from('race_earnings_history')
+                  .select('*, events(*)')
+                  .eq('steam_guid', steamGuid)
+                  .not('event_id', 'is', null)
+                  .order('created_at', { ascending: false })
+                  .range(0, PASSED_PER_PAGE - 1)
+              : Promise.resolve({ data: [] }),
+          ]);
+
+        if (historyRes.data) {
+          setRaceHistory(historyRes.data);
+          if (historyRes.data.length < HISTORY_PER_PAGE)
+            setHasMoreHistory(false);
+        }
+        if (hotlapsRes.data) setHotlaps(hotlapsRes.data);
+        if (statsRes.data) setTrackStats(statsRes.data);
+        if (eventsRes.data) setEvents(eventsRes.data);
+
+        if (passedRes.data) {
+          setPassedEvents(passedRes.data);
+          if (passedRes.data.length < PASSED_PER_PAGE) setHasMorePassed(false);
+        }
       }
 
-      const [{ data: carsDB }, { data: tracksDB }] = await Promise.all([
-        supabase.from('cars').select('id, name, image_url, model_key, class'),
-        supabase.from('tracks').select('id, name, image_url, track_model'),
-      ]);
-
-      const { data: statsData } = await supabase
-        .from('event_driver_stats')
-        .select('*, events(id, title, event_date)')
-        .eq('user_id', profileData.id)
-        .order('created_at', { ascending: false });
-
-      if (statsData) setSrHistory(statsData);
-
-      const { data: allEvents } = await supabase
-        .from('events')
-        .select('*, tracks(*)');
-
-      if (allEvents && profileData.steam_guid) {
-        const steamId = profileData.steam_guid;
-        const attended: any[] = [];
-        const carsMap: Record<string, any> = {};
-        const recordsMap: Record<string, any> = {};
-        let totalWins = 0;
-        let totalPodiums = 0;
-
-        allEvents.forEach((ev) => {
-          let hasParticipated = false;
-          if (!ev.results) return;
-
-          ev.results.forEach((session: any) => {
-            const finishPos = session.url.Result?.findIndex(
-              (r: any) => r.DriverGuid === steamId,
-            );
-
-            if (finishPos !== -1) {
-              hasParticipated = true;
-              const res = session.url.Result[finishPos];
-              const isRace = session.session.toLowerCase().includes('race');
-
-              if (isRace) {
-                if (finishPos === 0) totalWins++;
-                if (finishPos <= 2) totalPodiums++;
-              }
-
-              const cKey = res.CarModel;
-              if (!carsMap[cKey]) {
-                const dbCar = carsDB?.find((c) => c.model_key === cKey);
-                carsMap[cKey] = {
-                  count: 0,
-                  name: dbCar?.name || cKey,
-                  img: dbCar?.image_url,
-                  id: dbCar?.id,
-                  carClass: dbCar?.class,
-                };
-              }
-              carsMap[cKey].count++;
-
-              const track = ev.tracks;
-              if (track && res.BestLap > 0) {
-                if (
-                  !recordsMap[track.id] ||
-                  res.BestLap < recordsMap[track.id].time
-                ) {
-                  recordsMap[track.id] = {
-                    time: res.BestLap,
-                    trackName: track.name,
-                    img: track.image_url,
-                    car: carsMap[cKey].name,
-                    id: track.id,
-                  };
-                }
-              }
-            }
-          });
-
-          if (hasParticipated) {
-            const isRanked = statsData?.some((s) => s.event_id === ev.id);
-            attended.push({ ...ev, isRanked });
-          }
-        });
-
-        setEventAttendance(
-          attended.sort(
-            (a, b) =>
-              new Date(b.event_date).getTime() -
-              new Date(a.event_date).getTime(),
-          ),
-        );
-        setCareerStats({
-          starts: attended.length,
-          wins: totalWins,
-          podiums: totalPodiums,
-        });
-        setCarAffinity(
-          Object.values(carsMap).sort((a, b) => b.count - a.count),
-        );
-        setTrackRecords(Object.values(recordsMap));
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
       setLoading(false);
     }
-  }
 
-  if (loading)
+    fetchData();
+  }, [username]);
+
+  const loadMoreHistory = async () => {
+    if (!profile?.steam_guid || loadingMore) return;
+    setLoadingMore(true);
+
+    const nextPage = historyPage + 1;
+    const from = (nextPage - 1) * HISTORY_PER_PAGE;
+    const to = from + HISTORY_PER_PAGE - 1;
+
+    const { data } = await supabase
+      .from('race_earnings_history')
+      .select('*, events(title)')
+      .eq('steam_guid', profile.steam_guid)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (data) {
+      if (data.length < HISTORY_PER_PAGE) setHasMoreHistory(false);
+      setRaceHistory((prev) => [...prev, ...data]);
+      setHistoryPage(nextPage);
+    }
+    setLoadingMore(false);
+  };
+
+  const loadMorePassedEvents = async () => {
+    if (!profile?.steam_guid || loadingMorePassed) return;
+    setLoadingMorePassed(true);
+
+    const nextPage = passedPage + 1;
+    const from = (nextPage - 1) * PASSED_PER_PAGE;
+    const to = from + PASSED_PER_PAGE - 1;
+
+    const { data } = await supabase
+      .from('race_earnings_history')
+      .select('*, events(*)')
+      .eq('steam_guid', profile.steam_guid)
+      .not('event_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (data) {
+      if (data.length < PASSED_PER_PAGE) setHasMorePassed(false);
+      setPassedEvents((prev) => [...prev, ...data]);
+      setPassedPage(nextPage);
+    }
+    setLoadingMorePassed(false);
+  };
+
+  const getSessionName = (race: any) => {
+    if (race.events?.title) return race.events.title;
+    if (race.session_id) {
+      const parts = race.session_id.split('_/results');
+      if (parts.length > 1) return formatModelName(parts[0]);
+    }
+    return 'Public Server Session';
+  };
+
+  const calculateLevelProgress = (xp: number, level: number) => {
+    const currentLevelBaseXP = (level - 1) * 1000;
+    const nextLevelXP = level * 1000;
+    const progress = Math.max(
+      0,
+      Math.min(
+        100,
+        ((xp - currentLevelBaseXP) / (nextLevelXP - currentLevelBaseXP)) * 100,
+      ),
+    );
+    return { progress, nextLevelXP };
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-purple-500"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] space-y-4">
+        <div className="w-12 h-12 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-[var(--accent)] font-black uppercase italic tracking-widest text-sm drop-shadow-md">
+          Loading Telemetry...
+        </div>
       </div>
     );
+  }
 
-  const rank = getRankDetails(profile?.safety_rating || 0);
-  const xpInLevel = (profile?.total_xp || 0) % 1000;
-  const xpPercentage = (xpInLevel / 1000) * 100;
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
+        <AlertTriangle
+          size={56}
+          className="text-[var(--muted)] mb-6 animate-pulse"
+        />
+        <h1 className="text-4xl font-black uppercase italic tracking-tighter mb-2">
+          Driver Not Found
+        </h1>
+        <button
+          onClick={() => router.push('/')}
+          className="mt-8 px-8 py-3 bg-[var(--accent)] text-white rounded-xl font-black uppercase tracking-widest text-xs"
+        >
+          Return to Paddock
+        </button>
+      </div>
+    );
+  }
 
-  const paginatedCars = carAffinity.slice(
-    (carPage - 1) * ITEMS_PER_PAGE_CARS,
-    carPage * ITEMS_PER_PAGE_CARS,
-  );
-  const paginatedTracks = trackRecords.slice(
-    (trackPage - 1) * ITEMS_PER_PAGE_TRACKS,
-    trackPage * ITEMS_PER_PAGE_TRACKS,
-  );
-  const paginatedEvents = eventAttendance.slice(
-    (eventPage - 1) * ITEMS_PER_PAGE_EVENTS,
-    eventPage * ITEMS_PER_PAGE_EVENTS,
-  );
-  const paginatedLogs = srHistory.slice(
-    (logPage - 1) * ITEMS_PER_PAGE_LOGS,
-    logPage * ITEMS_PER_PAGE_LOGS,
+  const isOwner = currentUser?.username === profile.username;
+  const rankedDetails = getRankDetails(profile.safety_rating);
+  const bannerImg =
+    profile.banner_url ||
+    `https://images.unsplash.com/photo-1547038577-c866986e2eb9?q=80&w=2000&auto=format&fit=crop`;
+  const { progress: xpProgress, nextLevelXP } = calculateLevelProgress(
+    profile.total_xp,
+    profile.driver_level || 1,
   );
 
   return (
-    <div className="min-h-screen text-white font-sans pb-24">
-      {/* --- HEADER --- */}
-      <section className="relative pt-24 pb-16 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-10 items-center md:items-start">
-          <div className="w-44 h-44 rounded-[3rem] overflow-hidden border-2 border-white/10 ring-8 ring-purple-600/10 shadow-2xl shrink-0">
-            <img
-              src={
-                profile?.avatar_url ||
-                `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username}`
-              }
-              className="w-full h-full object-cover"
-              alt=""
-            />
-          </div>
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pb-20 transition-colors duration-300">
+      {/* --- HERO BANNER --- */}
+      <div className="relative h-60 md:h-96 w-full group overflow-hidden bg-[var(--card)]">
+        <div className="absolute inset-0 bg-black/40 z-10" />
+        <img
+          src={bannerImg}
+          alt="Banner"
+          className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/40 to-transparent" />
+      </div>
 
-          <div className="flex-1 text-center md:text-left pt-2 w-full">
-            <div className="flex flex-col md:flex-row md:items-center gap-5 mb-8">
-              <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter italic break-all">
-                {profile?.display_name || profile?.username}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-24 md:-mt-32 relative z-20">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start">
+          {/* --- LEFT SIDEBAR --- */}
+          <div className="w-full lg:col-span-4 space-y-6">
+            {/* Identity Card */}
+            <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl relative text-center pt-20 md:pt-24">
+              <div className="absolute -top-16 md:-top-20 left-1/2 -translate-x-1/2 z-30">
+                <img
+                  src={
+                    profile.avatar_url ||
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.steam_guid}`
+                  }
+                  alt="Avatar"
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[6px] border-[var(--card)] object-cover shadow-2xl bg-[var(--background)]"
+                />
+              </div>
+
+              <h1 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
+                {profile.display_name || profile.username}
               </h1>
-              <div
-                className={`px-6 py-2 rounded-xl text-xs font-black border ${rank.border} ${rank.bg} ${rank.color} tracking-[0.3em] backdrop-blur-md self-center md:self-start mt-2 md:mt-0`}
-              >
-                {rank.label} CLASS
-              </div>
-            </div>
+              <p className="text-xs text-[var(--muted)] font-bold tracking-widest uppercase mt-1 mb-4">
+                @{profile.username}
+              </p>
 
-            <div className="w-full max-w-xl bg-white/5 p-6 rounded-[2.5rem] border border-white/10 backdrop-blur-md relative overflow-hidden mx-auto md:mx-0">
-              <div className="flex justify-between items-end mb-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-purple-400 tracking-widest mb-1">
-                    Driver Progression
-                  </p>
-                  <h3 className="text-2xl font-black italic uppercase">
-                    Level {profile?.driver_level || 1}
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-black italic text-blue-400">
-                    {profile?.total_xp || 0}{' '}
-                    <span className="text-[10px] text-gray-500 not-italic uppercase">
-                      Total XP
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div className="h-5 w-full bg-black/40 rounded-full p-[4px] border border-white/5">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-600 via-lilac-400 to-blue-500 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)]"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, xpPercentage))}%`,
+              <div className="px-4 mb-6">
+                <ReactMarkdown
+                  components={{
+                    // Kita override styling default-nya agar sesuai desainmu
+                    p: ({ children }) => (
+                      <p className="text-sm text-[var(--foreground)] mb-2">
+                        {children}
+                      </p>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-bold text-[var(--accent)]">
+                        {children}
+                      </strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic">{children}</em>
+                    ),
+                    a: ({ children, href }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[var(--accent)] hover:underline underline-offset-4"
+                      >
+                        {children}
+                      </a>
+                    ),
                   }}
-                ></div>
-              </div>
-              <p className="text-[9px] mt-3 font-bold text-gray-500 uppercase tracking-widest text-center">
-                {1000 - xpInLevel} XP remaining to next level
-              </p>
-            </div>
-          </div>
-
-          {isOwner && (
-            <Link
-              href="/profile/settings"
-              className="p-4 bg-white/5 hover:bg-purple-600/20 rounded-2xl border border-white/10 transition-all self-center md:self-start shrink-0"
-            >
-              <Settings size={24} className="text-purple-300" />
-            </Link>
-          )}
-        </div>
-      </section>
-
-      {!profile?.steam_guid && isOwner && (
-        <div className="max-w-7xl mx-auto px-6 mb-12">
-          <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-[2rem] flex flex-col md:flex-row items-center gap-5 backdrop-blur-md shadow-lg">
-            <div className="p-3 bg-orange-500/20 rounded-2xl shrink-0">
-              <AlertTriangle className="text-orange-500" size={28} />
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h4 className="text-sm font-black text-orange-400 uppercase tracking-widest">
-                Steam GUID Belum Terhubung
-              </h4>
-              <p className="text-[11px] text-orange-300/80 font-bold mt-1 max-w-2xl">
-                Sistem tidak dapat melacak partisipasi event, kemenangan, maupun
-                waktu putaranmu. Hubungkan Steam GUID kamu sekarang agar
-                statistik balapanmu muncul di profil ini.
-              </p>
-            </div>
-            <Link
-              href="/profile/settings"
-              className="bg-orange-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 hover:scale-105 active:scale-95 transition-all whitespace-nowrap shadow-lg shadow-orange-500/20 shrink-0"
-            >
-              Atur Steam GUID
-            </Link>
-          </div>
-        </div>
-      )}
-
-      <section className="px-6 mb-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          <StatCard
-            icon={<ShieldCheck size={24} />}
-            label="Safety Rating"
-            value={(profile?.safety_rating || 0).toFixed(2)}
-            color="text-purple-400"
-          />
-          <StatCard
-            icon={<Flag size={24} />}
-            label="Starts"
-            value={careerStats.starts}
-            color="text-zinc-400"
-          />
-          <StatCard
-            icon={<Trophy size={24} />}
-            label="Wins (P1)"
-            value={careerStats.wins}
-            color="text-yellow-400"
-            highlight
-          />
-          <StatCard
-            icon={<Medal size={24} />}
-            label="Podiums (P2/3)"
-            value={careerStats.podiums}
-            color="text-blue-400"
-          />
-        </div>
-      </section>
-
-      <div className="max-w-7xl mx-auto px-6 space-y-24 mb-24">
-        {carAffinity.length > 0 && (
-          <section>
-            <SectionTitle icon={<CarIcon size={24} />} title="Car Affinity" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
-              {paginatedCars.map((car, i) => (
-                <Link
-                  key={i}
-                  href={car.id ? `/cars/${car.id}` : '#'}
-                  className="group bg-[#120821]/40 border border-white/10 rounded-[3rem] overflow-hidden hover:border-purple-500/50 transition-all shadow-xl"
                 >
-                  <div className="h-52 bg-zinc-900 overflow-hidden relative">
-                    <img
-                      src={car.img || '/car-placeholder.png'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700"
-                      alt=""
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#120821] to-transparent opacity-60"></div>
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm border border-white/10 px-3 py-1 rounded-full text-[9px] font-black tracking-widest text-white uppercase">
-                      {car.carClass || 'UNKNOWN'}
-                    </div>
+                  {profile.bio ||
+                    'This driver prefers to let their lap times do the talking.'}
+                </ReactMarkdown>
+              </div>
+
+              <div className="p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-2xl mb-4 text-left">
+                <div className="flex justify-between items-end mb-2">
+                  <div>
+                    <span className="text-[10px] text-[var(--muted)] font-black uppercase tracking-widest mb-1 block">
+                      Driver Level
+                    </span>
+                    <span className="text-3xl font-black leading-none text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent)] to-blue-500">
+                      {profile.driver_level || 1}
+                    </span>
                   </div>
-                  <div className="p-8 flex justify-between items-end relative -mt-10">
-                    <div className="max-w-[60%]">
-                      <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">
-                        Most Used
-                      </p>
-                      <h4 className="text-lg font-black italic uppercase truncate">
-                        {car.name}
-                      </h4>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-black italic text-blue-300">
-                        {car.count}
-                      </p>
-                      <p className="text-[8px] font-bold text-gray-500 uppercase">
-                        Sessions
-                      </p>
-                    </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-[var(--muted)] font-bold uppercase block">
+                      Next Level
+                    </span>
+                    <span className="text-xs font-black">
+                      {profile.total_xp} / {nextLevelXP} XP
+                    </span>
                   </div>
-                </Link>
+                </div>
+                <div className="w-full h-2 bg-[var(--card-border)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[var(--accent)] to-blue-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${xpProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {isOwner && (
+                <div className="mt-4 pt-4 border-t border-[var(--card-border)]">
+                  <button
+                    onClick={() => router.push('/profile/settings')}
+                    className="w-full flex items-center justify-center gap-2 bg-[var(--background)] border border-[var(--card-border)] hover:border-[var(--accent)] text-[var(--foreground)] hover:text-[var(--accent)] py-3.5 rounded-xl transition-all font-black text-[11px] uppercase tracking-widest shadow-sm"
+                  >
+                    <Settings size={16} /> Profile Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Telemetry Card */}
+            <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-4">
+                <Activity size={16} className="text-blue-500" /> Driver
+                Telemetry
+              </h3>
+              <div className="flex justify-between items-center p-4 bg-[var(--background)] rounded-2xl border border-[var(--card-border)]">
+                <div className="flex gap-3 items-center">
+                  <Clock size={18} className="text-blue-500" />
+                  <span className="text-xs font-bold text-[var(--muted)] uppercase">
+                    Playtime
+                  </span>
+                </div>
+                <span className="font-black text-sm">
+                  {formatPlayingTime(profile.total_playing_time)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-4 bg-[var(--background)] rounded-2xl border border-[var(--card-border)]">
+                <div className="flex gap-3 items-center">
+                  <Route size={18} className="text-emerald-500" />
+                  <span className="text-xs font-bold text-[var(--muted)] uppercase">
+                    Distance
+                  </span>
+                </div>
+                <span className="font-black font-mono text-sm">
+                  {profile.total_distance_km?.toFixed(1)}{' '}
+                  <span className="text-[10px]">KM</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-4 bg-[var(--background)] rounded-2xl border border-[var(--card-border)]">
+                <div className="flex gap-3 items-center">
+                  <Wallet size={18} className="text-yellow-500" />
+                  <span className="text-xs font-bold text-[var(--muted)] uppercase">
+                    NRC
+                  </span>
+                </div>
+                <span className="font-black text-yellow-500">
+                  {profile.nrc_coin?.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Mini Track Stats */}
+            {trackStats.length > 0 && (
+              <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
+                <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-4">
+                  <MapPin size={16} className="text-rose-500" /> Favorite Tracks
+                </h3>
+                <div className="space-y-3">
+                  {trackStats.slice(0, 5).map((track, i) => (
+                    <div key={i} className="flex justify-between items-center">
+                      <span className="text-sm font-bold truncate max-w-[250px]">
+                        {trackMap[track.track_model] ||
+                          formatModelName(track.track_model)}
+                      </span>
+                      <span className="text-xs text-[var(--muted)]">
+                        {track.total_laps} Laps
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* --- RIGHT MAIN CONTENT (TABS) --- */}
+          <div className="w-full lg:col-span-8 space-y-6">
+            <div className="flex overflow-x-auto gap-2 p-2 bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-sm hide-scrollbar whitespace-nowrap">
+              {[
+                { id: 'overview', icon: Activity, label: 'Overview' },
+                { id: 'history', icon: History, label: 'Race History' },
+                { id: 'hotlaps', icon: Timer, label: 'Hotlaps' },
+                { id: 'events', icon: CalendarDays, label: 'Events' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-[var(--accent)] text-white shadow-lg'
+                      : 'text-[var(--muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  <tab.icon size={16} /> {tab.label}
+                </button>
               ))}
             </div>
-            <PaginationControl
-              currentPage={carPage}
-              totalItems={carAffinity.length}
-              itemsPerPage={ITEMS_PER_PAGE_CARS}
-              onPageChange={setCarPage}
-            />
-          </section>
-        )}
 
-        {trackRecords.length > 0 && (
-          <section>
-            <SectionTitle
-              icon={<MapIcon size={24} />}
-              title="Circuit Records"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-              {paginatedTracks.map((tr, i) => (
-                <Link
-                  key={i}
-                  href={`/tracks/${tr.id}`}
-                  className="group relative h-64 rounded-[3.5rem] overflow-hidden border border-white/5 hover:border-blue-500/50 transition-all shadow-2xl"
+            {/* TAB: OVERVIEW */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div
+                  className={`bg-[var(--card)] border p-6 md:p-8 rounded-[2rem] shadow-xl ${rankedDetails.bg} ${rankedDetails.border}`}
                 >
-                  <img
-                    src={tr.img || '/track-placeholder.jpg'}
-                    className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-all duration-700"
-                    alt=""
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-tr from-black via-black/40 to-transparent"></div>
-                  <div className="relative h-full p-10 flex flex-col justify-end">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em] mb-2">
-                      {tr.trackName}
-                    </p>
-                    <div className="flex justify-between items-end">
-                      <h4 className="text-5xl font-black italic tracking-tighter">
-                        {formatTime(tr.time)}
-                      </h4>
-                      <span className="text-[10px] font-bold text-white/40 uppercase italic max-w-[40%] text-right truncate">
-                        Using {tr.car}
+                  <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
+                    <div className="flex items-center gap-4">
+                      <ShieldCheck size={32} className={rankedDetails.color} />
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter">
+                          Ranked Career
+                        </h2>
+                        <span
+                          className={`text-[9px] md:text-[10px] font-black tracking-widest px-2 py-1 rounded bg-[var(--background)] border ${rankedDetails.border} ${rankedDetails.color}`}
+                        >
+                          {rankedDetails.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="md:text-right">
+                      <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1">
+                        Safety Rating
+                      </p>
+                      <span
+                        className={`text-4xl font-black leading-none ${rankedDetails.color}`}
+                      >
+                        {profile.safety_rating?.toFixed(2)}
                       </span>
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
-            <PaginationControl
-              currentPage={trackPage}
-              totalItems={trackRecords.length}
-              itemsPerPage={ITEMS_PER_PAGE_TRACKS}
-              onPageChange={setTrackPage}
-            />
-          </section>
-        )}
+                  <div className="grid grid-cols-3 gap-3 md:gap-4">
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.total_wins}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Wins
+                      </span>
+                    </div>
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.total_podiums}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Podiums
+                      </span>
+                    </div>
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.total_starts}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Starts
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-        {(eventAttendance.length > 0 || srHistory.length > 0) && (
-          <section className="space-y-16">
-            {eventAttendance.length > 0 && (
-              <div>
-                <SectionTitle
-                  icon={<Calendar size={24} />}
-                  title="Event Participation"
-                />
-                <div className="grid gap-4 mt-8">
-                  {paginatedEvents.map((ev) => (
-                    <Link
-                      key={ev.id}
-                      href={`/events/${ev.id}`}
-                      className="group flex flex-col md:flex-row items-start md:items-center gap-6 p-6 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-purple-600/10 hover:border-purple-500/40 transition-all"
-                    >
-                      <div className="flex items-center gap-6 w-full">
-                        <img
-                          src={ev.image_url || '/placeholder.jpg'}
-                          className="w-24 h-14 object-cover rounded-xl"
-                          alt=""
-                        />
-                        <div className="flex-1">
-                          <h4 className="text-lg font-black italic uppercase group-hover:text-purple-400 transition truncate">
-                            {ev.title}
-                          </h4>
-                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                            {new Date(ev.event_date).toLocaleDateString(
-                              'id-ID',
-                              {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                              },
-                            )}
+                <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-[2rem] shadow-xl">
+                  <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
+                    <div className="flex items-center gap-4">
+                      <Gamepad2
+                        size={32}
+                        className="text-[var(--foreground)]"
+                      />
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter">
+                          Casual Play
+                        </h2>
+                        <span className="text-[9px] md:text-[10px] font-black tracking-widest px-2 py-1 rounded bg-[var(--background)] border border-[var(--card-border)] text-[var(--muted)]">
+                          UNRANKED
+                        </span>
+                      </div>
+                    </div>
+                    <div className="md:text-right">
+                      <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1">
+                        Unranked SR
+                      </p>
+                      <span className="text-4xl font-black leading-none">
+                        {profile.unranked_safety_rating?.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 md:gap-4">
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.unranked_wins}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Wins
+                      </span>
+                    </div>
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.unranked_podiums}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Podiums
+                      </span>
+                    </div>
+                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
+                      <span className="block text-2xl md:text-3xl font-black mb-1">
+                        {profile.unranked_starts}
+                      </span>
+                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
+                        Starts
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: HISTORY */}
+            {activeTab === 'history' && (
+              <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
+                <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6">
+                  Recent Earnings & History
+                </h2>
+                {raceHistory.length === 0 ? (
+                  <p className="text-center text-[var(--muted)] text-sm py-10">
+                    No race history found.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {raceHistory.map((race) => (
+                      <div
+                        key={race.id}
+                        className="flex flex-col lg:flex-row justify-between lg:items-center p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl gap-4"
+                      >
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${race.session_type === 'ranked' ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-[var(--muted)]/10 text-[var(--muted)]'}`}
+                            >
+                              {race.session_type}
+                            </span>
+                            <span className="text-xs text-[var(--muted)]">
+                              {formatDate(race.created_at)}
+                            </span>
+                          </div>
+                          <p className="font-bold text-sm text-[var(--foreground)] truncate">
+                            {getSessionName(race)}
+                          </p>
+                          <p className="text-xs text-[var(--muted)] flex items-center gap-1 mt-1 truncate">
+                            <Car size={12} />{' '}
+                            {carMap[race.car_model] ||
+                              formatModelName(race.car_model)}{' '}
+                            •{' '}
+                            {trackMap[race.track_model] ||
+                              formatModelName(race.track_model)}{' '}
+                            • {race.laps_completed} Laps
+                          </p>
+                          <div className="flex flex-wrap gap-3 mt-3">
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
+                              <AlertTriangle
+                                size={12}
+                                className="text-yellow-500"
+                              />{' '}
+                              Cuts: {race.track_cuts || 0}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
+                              <Activity size={12} className="text-rose-500" />{' '}
+                              Colls:{' '}
+                              {(race.incidents_car || 0) +
+                                (race.incidents_env || 0)}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
+                              <Trophy
+                                size={12}
+                                className="text-[var(--accent)]"
+                              />{' '}
+                              XP: +{race.xp_gained || 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-4 items-center bg-[var(--card)] p-3 rounded-lg border border-[var(--card-border)]">
+                          <div className="text-center min-w-[40px] md:min-w-[50px]">
+                            <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
+                              SR
+                            </p>
+                            <p
+                              className={`text-xs md:text-sm font-black flex items-center justify-center ${race.sr_change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                            >
+                              {race.sr_change >= 0 ? (
+                                <TrendingUp size={12} className="mr-1" />
+                              ) : (
+                                <TrendingDown size={12} className="mr-1" />
+                              )}
+                              {race.sr_change > 0 ? '+' : ''}
+                              {race.sr_change?.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="w-px h-8 bg-[var(--card-border)]"></div>
+                          <div className="text-center min-w-[40px] md:min-w-[50px]">
+                            <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
+                              NRC
+                            </p>
+                            <p
+                              className={`text-xs md:text-sm font-black flex items-center justify-center ${race.nrc_change >= 0 ? 'text-yellow-500' : 'text-rose-500'}`}
+                            >
+                              {race.nrc_change > 0 ? '+' : ''}
+                              {race.nrc_change}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {hasMoreHistory && (
+                      <button
+                        onClick={loadMoreHistory}
+                        disabled={loadingMore}
+                        className="w-full flex items-center justify-center gap-2 bg-[var(--background)] border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] py-3 rounded-xl transition-all font-black text-[10px] md:text-xs uppercase mt-4 disabled:opacity-50"
+                      >
+                        {loadingMore ? (
+                          'Loading Data...'
+                        ) : (
+                          <>
+                            <ChevronDown size={16} /> Load More
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: HOTLAPS */}
+            {activeTab === 'hotlaps' && (
+              <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
+                <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6">
+                  Personal Best Laps
+                </h2>
+                {hotlaps.length === 0 ? (
+                  <p className="text-center text-[var(--muted)] text-sm py-10">
+                    No hotlap records found.
+                  </p>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {hotlaps.map((lap) => (
+                      <div
+                        key={lap.id}
+                        className="p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl flex justify-between items-center group hover:border-[var(--accent)] transition-colors"
+                      >
+                        <div className="overflow-hidden pr-2">
+                          <p className="font-bold text-xs md:text-sm truncate">
+                            {trackMap[lap.track_model] ||
+                              formatModelName(lap.track_model)}
+                          </p>
+                          <p className="text-[10px] md:text-xs text-[var(--muted)] truncate">
+                            {carMap[lap.car_model] ||
+                              formatModelName(lap.car_model)}
                           </p>
                         </div>
-                        <div
-                          className={`hidden md:block px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${ev.isRanked ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-white/5 text-gray-500 border border-white/10'}`}
-                        >
-                          {ev.isRanked ? 'RANKED' : 'UNRANKED / PENDING'}
+                        <div className="text-right">
+                          <p className="text-base md:text-lg font-black text-[var(--accent)] font-mono">
+                            {formatLapTime(lap.best_lap)}
+                          </p>
                         </div>
-                        <ChevronRight className="text-gray-800 group-hover:text-white hidden md:block" />
                       </div>
-                      <div
-                        className={`md:hidden px-4 py-1.5 w-full text-center rounded-xl text-[9px] font-black uppercase tracking-widest mt-2 ${ev.isRanked ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-white/5 text-gray-500 border border-white/10'}`}
-                      >
-                        {ev.isRanked ? 'RANKED' : 'UNRANKED / PENDING'}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                <PaginationControl
-                  currentPage={eventPage}
-                  totalItems={eventAttendance.length}
-                  itemsPerPage={ITEMS_PER_PAGE_EVENTS}
-                  onPageChange={setEventPage}
-                />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {srHistory.length > 0 && (
-              <div>
-                <SectionTitle
-                  icon={<TrendingUp size={24} />}
-                  title="Detailed Safety Log"
-                />
-                <div className="bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden backdrop-blur-md mt-8 overflow-x-auto">
-                  <table className="w-full text-left min-w-[600px]">
-                    <thead className="bg-white/5 text-[10px] font-black uppercase tracking-[0.3em] text-purple-300/50">
-                      <tr>
-                        <th className="px-10 py-7">Event</th>
-                        <th className="px-6 py-7 text-center">
-                          Incidents (Cuts/Coll)
-                        </th>
-                        <th className="px-6 py-7 text-center">SR Change</th>
-                        <th className="px-10 py-7 text-right">XP Gained</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {paginatedLogs.map((log) => (
-                        <tr
-                          key={log.id}
-                          className="hover:bg-white/[0.02] transition"
+            {/* TAB: EVENTS (Registered + Passed) */}
+            {activeTab === 'events' && (
+              <div className="space-y-6">
+                {/* 1. REGISTERED EVENTS */}
+                <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
+                  <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6">
+                    Registered Events
+                  </h2>
+                  {events.length === 0 ? (
+                    <p className="text-center text-[var(--muted)] text-sm py-10">
+                      Not registered for any events yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((reg) => (
+                        <div
+                          key={reg.id}
+                          className="flex gap-4 p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl"
                         >
-                          <td className="px-10 py-7">
-                            <Link
-                              href={`/events/${log.events?.id}`}
-                              className="text-sm font-black italic uppercase hover:text-purple-400 transition"
-                            >
-                              {log.events?.title}
-                            </Link>
-                          </td>
-                          <td className="px-6 py-7">
-                            <div className="flex justify-center gap-6 text-[11px] font-black">
-                              <span className="text-yellow-500">
-                                C: {log.cuts}
-                              </span>
-                              <span className="text-orange-500">
-                                X: {log.collisions}
+                          {reg.events?.image_url ? (
+                            <img
+                              src={reg.events.image_url}
+                              alt="Event"
+                              className="w-16 h-16 md:w-24 md:h-24 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 md:w-24 md:h-24 bg-[var(--card)] rounded-lg flex items-center justify-center border border-[var(--card-border)]">
+                              <Flag className="text-[var(--muted)]" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex flex-col md:flex-row md:justify-between items-start">
+                              <h3 className="font-black text-sm md:text-lg">
+                                {reg.events?.title || 'Unknown Event'}
+                              </h3>
+                              <span className="text-[9px] font-black uppercase px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 mt-1 md:mt-0">
+                                Upcoming
                               </span>
                             </div>
-                          </td>
-                          <td
-                            className={`px-6 py-7 text-center font-black italic text-base ${log.sr_change >= 0 ? 'text-green-400' : 'text-red-400'}`}
-                          >
-                            {log.sr_change >= 0 ? '+' : ''}
-                            {log.sr_change.toFixed(2)}
-                          </td>
-                          <td className="px-10 py-7 text-right text-blue-400 font-black">
-                            +{log.xp_gained} XP
-                          </td>
-                        </tr>
+                            <p className="text-[10px] md:text-xs text-[var(--muted)] mb-2 mt-1">
+                              {reg.events?.event_date
+                                ? formatDate(reg.events.event_date)
+                                : 'TBA'}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="text-[9px] md:text-[10px] border border-[var(--card-border)] px-2 py-1 rounded-md">
+                                Car: <b>{reg.car_name}</b>
+                              </span>
+                              {reg.team_name && (
+                                <span className="text-[9px] md:text-[10px] border border-[var(--card-border)] px-2 py-1 rounded-md">
+                                  Team: <b>{reg.team_name}</b>
+                                </span>
+                              )}
+                              <span className="text-[9px] md:text-[10px] bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-1 rounded-md font-bold">
+                                #{reg.driver_number}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
-                <PaginationControl
-                  currentPage={logPage}
-                  totalItems={srHistory.length}
-                  itemsPerPage={ITEMS_PER_PAGE_LOGS}
-                  onPageChange={setLogPage}
-                />
+
+                {/* 2. PASSED EVENTS */}
+                <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
+                  <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6 flex items-center gap-2">
+                    <CheckCircle2 size={20} className="text-[var(--muted)]" />{' '}
+                    Passed Events
+                  </h2>
+                  {passedEvents.length === 0 ? (
+                    <p className="text-center text-[var(--muted)] text-sm py-10">
+                      No completed events in history.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {passedEvents.map((raceEvent) => {
+                        const eventData = raceEvent.events;
+                        return (
+                          <Link
+                            href={`/events/${eventData?.id || raceEvent.event_id}`}
+                            key={raceEvent.id}
+                            className="block group"
+                          >
+                            <div className="flex flex-col md:flex-row gap-4 p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl opacity-90 group-hover:opacity-100 group-hover:border-[var(--accent)] transition-all cursor-pointer">
+                              <div className="flex items-center gap-4 flex-1">
+                                {eventData?.image_url ? (
+                                  <img
+                                    src={eventData.image_url}
+                                    alt="Event"
+                                    className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-lg grayscale group-hover:grayscale-0 transition-all"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 md:w-16 md:h-16 bg-[var(--card)] rounded-lg flex items-center justify-center border border-[var(--card-border)]">
+                                    <Trophy
+                                      className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors"
+                                      size={16}
+                                    />
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="font-black text-sm md:text-base text-[var(--foreground)] leading-tight group-hover:text-[var(--accent)] transition-colors">
+                                    {eventData?.title || 'Unknown Event'}
+                                  </h3>
+                                  <p className="text-[10px] md:text-xs text-[var(--muted)] mt-1">
+                                    {eventData?.event_date
+                                      ? formatDate(eventData.event_date)
+                                      : formatDate(raceEvent.created_at)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* SR, NRC & XP Earnings for this passed event */}
+                              <div className="flex gap-4 items-center bg-[var(--card)] p-2 md:p-3 rounded-lg border border-[var(--card-border)] self-start md:self-center w-full md:w-auto mt-2 md:mt-0">
+                                <div className="text-center flex-1 md:min-w-[40px]">
+                                  <p className="text-[9px] text-[var(--muted)] uppercase font-bold">
+                                    SR
+                                  </p>
+                                  <p
+                                    className={`text-xs font-black flex items-center justify-center ${raceEvent.sr_change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                                  >
+                                    {raceEvent.sr_change > 0 ? '+' : ''}
+                                    {raceEvent.sr_change?.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div className="w-px h-6 bg-[var(--card-border)]"></div>
+                                <div className="text-center flex-1 md:min-w-[40px]">
+                                  <p className="text-[9px] text-[var(--muted)] uppercase font-bold">
+                                    NRC
+                                  </p>
+                                  <p
+                                    className={`text-xs font-black flex items-center justify-center ${raceEvent.nrc_change >= 0 ? 'text-yellow-500' : 'text-rose-500'}`}
+                                  >
+                                    {raceEvent.nrc_change > 0 ? '+' : ''}
+                                    {raceEvent.nrc_change}
+                                  </p>
+                                </div>
+                                <div className="w-px h-6 bg-[var(--card-border)]"></div>
+                                <div className="text-center flex-1 md:min-w-[40px]">
+                                  <p className="text-[9px] text-[var(--muted)] uppercase font-bold">
+                                    XP
+                                  </p>
+                                  <p className="text-xs font-black text-[var(--accent)] flex items-center justify-center">
+                                    +{raceEvent.xp_gained || 0}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+
+                      {/* Lazy Load Button for Passed Events */}
+                      {hasMorePassed && (
+                        <button
+                          onClick={loadMorePassedEvents}
+                          disabled={loadingMorePassed}
+                          className="w-full flex items-center justify-center gap-2 bg-[var(--background)] border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] py-3 rounded-xl transition-all font-black text-[10px] md:text-xs uppercase mt-4 disabled:opacity-50"
+                        >
+                          {loadingMorePassed ? (
+                            'Loading Events...'
+                          ) : (
+                            <>
+                              <ChevronDown size={16} /> Load More Events
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
-          </section>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
-}
-
-// --- SUBCOMPONENTS ---
-
-function StatCard({ icon, label, value, color, highlight }: any) {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center text-center bg-[#120821]/60 backdrop-blur-2xl border ${highlight ? 'border-yellow-500/40 shadow-[0_0_30px_rgba(234,179,8,0.15)]' : 'border-white/10'} p-6 md:p-8 rounded-[3rem] transition-all`}
-    >
-      <div
-        className={`flex flex-col md:flex-row items-center gap-2 mb-3 md:mb-5 ${color}`}
-      >
-        {icon}{' '}
-        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-          {label}
-        </span>
-      </div>
-      <div className="w-full flex justify-center items-center">
-        <h2
-          className={`text-4xl md:text-5xl font-black italic tracking-tighter break-all md:break-words ${highlight ? 'text-yellow-400' : 'text-white'}`}
-        >
-          {value}
-        </h2>
-      </div>
-    </div>
-  );
-}
-
-function SectionTitle({ icon, title }: any) {
-  return (
-    <div className="flex items-center gap-4 md:gap-5 border-b border-white/10 pb-4 md:pb-6">
-      <div className="p-2 md:p-3 bg-purple-500/10 rounded-2xl text-purple-400">
-        {icon}
-      </div>
-      <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">
-        {title}
-      </h3>
-    </div>
-  );
-}
-
-function PaginationControl({
-  currentPage,
-  totalItems,
-  itemsPerPage,
-  onPageChange,
-}: any) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="flex items-center justify-center gap-6 mt-8">
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-purple-600/30 hover:border-purple-500/50 transition-all disabled:opacity-20 disabled:hover:bg-white/5"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
-        Page <span className="text-white">{currentPage}</span> of {totalPages}
-      </span>
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-purple-600/30 hover:border-purple-500/50 transition-all disabled:opacity-20 disabled:hover:bg-white/5"
-      >
-        <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-}
-
-function formatTime(ms: number) {
-  if (!ms || ms <= 0) return '--:--.---';
-  const minutes = Math.floor(ms / 60000);
-  const seconds = ((ms % 60000) / 1000).toFixed(3);
-  return `${minutes}:${Number(seconds) < 10 ? '0' : ''}${seconds}`;
 }

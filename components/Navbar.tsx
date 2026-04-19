@@ -1,6 +1,5 @@
 'use client';
 
-// ... (semua import tetap sama) ...
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -18,247 +17,254 @@ import {
   Menu,
   X,
   User,
+  Zap,
+  Sun, // Tambahkan ini
+  Moon, // Tambahkan ini
 } from 'lucide-react';
 import {
   DiscordIcon,
   InstagramIcon,
   YoutubeIcon,
 } from '@/components/icons/social';
+import { useTheme } from 'next-themes';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // State untuk menyimpan data user dan status admin
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
+  // LOGIKA TETAP SAMA SEPERTI SEBELUMNYA
   useEffect(() => {
-    // Flag untuk mencegah update state jika komponen di-unmount
+    setMounted(true);
     let isMounted = true;
 
-    // Fungsi asinkronus untuk mengambil data
     const getUserData = async () => {
       try {
-        // 1. Ambil sesi saat ini
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (!isMounted) return;
 
-        if (session && session.user) {
+        if (session) {
           setUser(session.user);
 
-          // 2. Ambil profile untuk mengecek role
-          const { data: profile } = await supabase
+          // Ambil data profile berdasarkan ID user yang sedang login
+          const { data: profileData } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, username') // Ambil role untuk admin, username untuk link profile
             .eq('id', session.user.id)
             .single();
 
-          if (isMounted) {
-            if (profile && profile.role === 'admin') {
+          if (profileData) {
+            setProfile(profileData); // Simpan data profile ke state
+
+            // Cek Admin
+            if (
+              profileData.role === 'admin' ||
+              profileData.role === 'moderator'
+            ) {
               setIsAdmin(true);
-            } else {
-              setIsAdmin(false);
             }
           }
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+
+    getUserData();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!isMounted) return;
+        if (session) {
+          setUser(session.user);
         } else {
-          // Reset jika tidak ada sesi
           setUser(null);
           setIsAdmin(false);
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
+      },
+    );
 
-    // Jalankan pengecekan pertama kali
-    getUserData();
-
-    // Set up listener untuk perubahan auth (Login/Logout)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-
-      if (event === 'SIGNED_IN' && session) {
-        setUser(session.user);
-
-        // Cek role saat login
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
-        if (isMounted) {
-          setIsAdmin(profile?.role === 'admin');
-        }
-      } else if (event === 'SIGNED_OUT') {
-        // Reset saat logout
-        setUser(null);
-        setIsAdmin(false);
-      }
-    });
-
-    // Fungsi cleanup
     return () => {
-      isMounted = false; // Tandai komponen sudah di-unmount
-      subscription.unsubscribe(); // Hapus listener auth
+      isMounted = false;
+      authListener.subscription.unsubscribe();
     };
-  }, []); // Array dependensi kosong agar hanya jalan sekali saat mount
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setIsMobileMenuOpen(false);
     router.push('/login');
-    router.refresh(); // Refresh untuk membersihkan state router
+    setIsMobileMenuOpen(false);
   };
 
-  const navLinks = [
-    { href: '/', label: 'Home', icon: <Home size={16} /> },
-    { href: '/events', label: 'Events', icon: <Calendar size={16} /> },
-    { href: '/cars', label: 'Cars', icon: <Car size={16} /> },
-    { href: '/tracks', label: 'Circuits', icon: <MapPin size={16} /> },
-    { href: '/servers', label: 'Servers', icon: <Server size={16} /> },
-  ];
+  // Mencegah hydration mismatch
+  if (!mounted) return null;
 
   return (
-    <nav className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-md border-b border-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Kontainer flexbox utama untuk baris navigasi */}
-        <div className="flex justify-between items-center h-16">
-          {/* Bagian kiri: Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <Gamepad2 className="text-blue-500" size={24} />
-            <span className="font-black italic text-xl text-white uppercase tracking-tighter">
-              Nismara Racing<span className="text-blue-500">.</span>
-            </span>
-          </Link>
+    <nav className="fixed top-0 w-full z-[100] glass transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Logo Section */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <Zap size={18} className="text-white fill-white" />
+          </div>
+          <span className="font-black italic text-xl tracking-tighter uppercase">
+            NISMARA<span className="text-[var(--accent)]">RACING</span>
+          </span>
+        </Link>
 
-          {/* Bagian kanan: Sosial, Auth, dan Tombol Mobile */}
-          <div className="flex justify-between items-center gap-30">
-            {/* Desktop Nav Links (hidden on mobile) */}
-            <div className="hidden md:flex space-x-1">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.href}
-                  href={link.href}
-                  icon={link.icon}
-                  active={pathname === link.href}
+        {/* Desktop Links (UI Only Change) */}
+        <div className="hidden lg:flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-[var(--glass-border)]">
+          <NavLink href="/" active={pathname === '/'}>
+            Home
+          </NavLink>
+          <NavLink href="/servers" active={pathname === '/servers'}>
+            Servers
+          </NavLink>
+          <NavLink href="/events" active={pathname === '/events'}>
+            Events
+          </NavLink>
+          <NavLink href="/leaderboard" active={pathname === '/leaderboard'}>
+            Standings
+          </NavLink>
+          <NavLink href="/cars" active={pathname === '/cars'}>
+            Vehicles
+          </NavLink>
+          <NavLink href="/tracks" active={pathname === '/tracks'}>
+            Tracks
+          </NavLink>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Theme Switcher */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2.5 rounded-xl bg-white/5 border border-[var(--glass-border)] hover:border-[var(--accent)] transition-all"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'dark' ? (
+              <Sun size={18} className="text-yellow-400" />
+            ) : (
+              <Moon size={18} className="text-blue-500" />
+            )}
+          </button>
+
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="p-2.5 text-[var(--accent)] bg-[var(--accent-glow)] rounded-xl transition-all border border-transparent hover:border-[var(--accent)]"
+                  >
+                    <LayoutDashboard size={18} />
+                  </Link>
+                )}
+                <Link
+                  href={`/profile/${profile?.username || user.user_metadata?.username || 'profile'}`}
+                  className="w-10 h-10 rounded-full border-2 border-[var(--accent)] p-0.5 overflow-hidden transition-transform hover:scale-105"
                 >
-                  {link.label}
-                </NavLink>
-              ))}
+                  <img
+                    src={
+                      profile?.avatar_url ||
+                      user.user_metadata?.avatar_url ||
+                      `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
+                    }
+                    alt="profile"
+                    className="w-full h-full rounded-full object-cover shadow-md"
+                  />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                Login
+              </Link>
+            )}
+          </div>
+
+          {/* Hamburger Mobile */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 text-[var(--muted)]"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden absolute top-16 left-0 w-full glass border-t border-[var(--glass-border)] animate-in slide-in-from-top duration-300">
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <MobileNavLink
+                href="/"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </MobileNavLink>
+              <MobileNavLink
+                href="/events"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Events
+              </MobileNavLink>
+              <MobileNavLink
+                href="/leaderboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Standings
+              </MobileNavLink>
+              <MobileNavLink
+                href="/cars"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Vehicles
+              </MobileNavLink>
+              <MobileNavLink
+                href="/tracks"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Tracks
+              </MobileNavLink>
+              <MobileNavLink
+                href="/servers"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Servers
+              </MobileNavLink>
             </div>
 
-            {/* Right Section (Socials & Auth) */}
-            <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <SocialIcon
-                  href="https://link.nismara.web.id/discord"
-                  icon={<DiscordIcon />}
-                  color="hover:text-[#5865F2]"
-                />
-                <SocialIcon
-                  href="https://link.nismara.web.id/instagram"
-                  icon={<InstagramIcon />}
-                  color="hover:text-[#E4405F]"
-                />
-                <SocialIcon
-                  href="https://link.nismara.web.id/youtube"
-                  icon={<YoutubeIcon />}
-                  color="hover:text-[#FF0000]"
-                />
-              </div>
-              {/* User Actions */}
-              <div className="h-4 w-[1px] bg-gray-800" /> {/* Divider */}
+            <div className="pt-6 border-t border-[var(--glass-border)] flex flex-col gap-3">
               {user ? (
-                <div className="flex items-center gap-3">
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      <LayoutDashboard size={20} />
-                    </Link>
-                  )}
+                <>
                   <Link
-                    href="/profile"
-                    className="text-gray-400 hover:text-white transition-colors"
+                    href={`/profile/${user.user_metadata?.username}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl font-bold uppercase text-[10px] tracking-widest text-[var(--foreground)]"
                   >
-                    <User size={20} />
+                    <User size={18} /> My Profile
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <LogOut size={20} />
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white bg-blue-600 px-4 py-2 rounded-full hover:bg-blue-700 transition-all"
-                >
-                  <LogIn size={14} />
-                  Login
-                </Link>
-              )}
-            </div>
-
-            {/* Mobile Menu Button - Sekarang di dalam kontainer flex utama */}
-            <div className="flex md:hidden items-center">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="text-gray-400 hover:text-white focus:outline-none"
-              >
-                {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-              </button>
-            </div>
-          </div>
-        </div>{' '}
-        {/* <-- Sekarang ini menutup h-16 dengan benar */}
-      </div>
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-gray-900 border-t border-gray-800">
-          <div className="px-4 pt-2 pb-6 space-y-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  pathname === link.href
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                {link.icon}
-                {link.label}
-              </Link>
-            ))}
-
-            <div className="pt-4 border-t border-gray-800 flex flex-col gap-2">
-              {user ? (
-                <>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white"
-                    >
-                      <LayoutDashboard size={18} /> Dashboard Admin
-                    </Link>
-                  )}
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold"
+                    className="flex items-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 rounded-xl font-bold uppercase text-[10px] tracking-widest"
                   >
                     <LogOut size={18} /> Logout
                   </button>
@@ -267,7 +273,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold justify-center"
+                  className="flex items-center gap-3 px-4 py-3 bg-[var(--accent)] text-white rounded-xl font-bold justify-center uppercase text-[10px] tracking-widest"
                 >
                   <LogIn size={18} /> Login
                 </Link>
@@ -280,32 +286,30 @@ export default function Navbar() {
   );
 }
 
-// ... (helpers `NavLink` dan `SocialIcon` tetap sama) ...
-function NavLink({ href, children, icon, active }: any) {
+// Sub-components untuk konsistensi CSS
+function NavLink({ href, children, active }: any) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+      className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
         active
-          ? 'bg-blue-600 text-white shadow-lg'
-          : 'text-gray-400 hover:text-white hover:bg-white/5'
+          ? 'bg-[var(--accent)] text-white shadow-lg shadow-purple-500/30'
+          : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
       }`}
     >
-      {icon}
       {children}
     </Link>
   );
 }
 
-function SocialIcon({ href, icon, color }: any) {
+function MobileNavLink({ href, children, onClick }: any) {
   return (
-    <a
+    <Link
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`text-gray-400 transition-colors ${color}`}
+      onClick={onClick}
+      className="px-4 py-3 bg-white/5 border border-[var(--glass-border)] rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--muted)] text-center transition-active active:bg-[var(--accent)] active:text-white"
     >
-      {icon}
-    </a>
+      {children}
+    </Link>
   );
 }

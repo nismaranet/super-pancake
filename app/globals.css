@@ -1,30 +1,95 @@
 @import 'tailwindcss';
 
-body {
-  background: radial-gradient(
-      circle at 50% -10%,
-      #2d1b4e 0%,
-      /* Lilac Shadow */ #120821 40%,
-      /* Deep Purple */ #050505 100% /* Deep Black */
-    )
-    no-repeat fixed !important;
+@layer base {
+  :root {
+    /* Light Theme */
+    --background: #fdfdff;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-border: rgba(0, 0, 0, 0.06);
+    --accent: #7c3aed;
+    --accent-glow: rgba(124, 58, 237, 0.1);
+    --secondary-glow: rgba(59, 130, 246, 0.05); /* Soft Blue */
+    --muted: #64748b;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme='dark'] {
+    /* Dark Theme - Balikkan kejenuhan warna */
+    --background: #020203; /* Tidak hitam pekat, sedikit biru tua gelap */
+    --foreground: #f8fafc;
+    --card: #08080a;
+    --card-border: rgba(255, 255, 255, 0.04);
+    --accent: #a78bfa;
+    --accent-glow: rgba(167, 139, 250, 0.15);
+    --secondary-glow: rgba(30, 64, 175, 0.2); /* Deep Blue Glow */
+    --muted: #94a3b8;
+    --glass-bg: rgba(8, 8, 10, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.06);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Efek Mesh Gradient Global */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 0% 0%, var(--accent-glow) 0%, transparent 40%),
+      radial-gradient(
+        circle at 100% 100%,
+        var(--secondary-glow) 0%,
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(124, 58, 237, 0.02) 0%,
+        transparent 50%
+      );
+    pointer-events: none;
+  }
 }
 
-* {
-  transition: all 0.2s ease;
+/* Racing Utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
 }
 
-/* Custom Scrollbar untuk Nismara Racing */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+/* Animasi untuk Glow agar terasa hidup */
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #030712;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6; /* Blue-500 */
+
+.bg-glow-spot {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  pointer-events: none;
+  animation: pulse-slow 10s infinite ease-in-out;
 }

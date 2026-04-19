@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
+import { DiscordIcon } from '@/components/icons/social';
 import {
   Zap,
   ShieldCheck,
@@ -288,7 +289,7 @@ export default function LoginPage() {
 
               {step === 'login' && (
                 <>
-                  <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter mb-10">
+                  <h1 className="text-3xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-10">
                     Nismara <span className="text-blue-500">Hub</span>
                   </h1>
                   <button
@@ -302,9 +303,10 @@ export default function LoginPage() {
                         },
                       });
                     }}
-                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all"
+                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
                   >
-                    Login with Discord
+                    <DiscordIcon className="w-6 h-6" />
+                    <span>Login with Discord</span>
                   </button>
                 </>
               )}
@@ -312,9 +314,47 @@ export default function LoginPage() {
               {step === 'checking' && (
                 <div className="py-10">
                   <div className="w-10 h-10 mx-auto border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4" />
-                  <h2 className="text-xs font-black text-white uppercase tracking-widest">
+                  <h2 className="text-xs font-black text-[var(--foreground)] uppercase tracking-widest">
                     Checking Driver Profile...
                   </h2>
+                </div>
+              )}
+
+              {step === 'denied' && (
+                <div className="py-10 text-center animate-in fade-in zoom-in duration-300">
+                  {/* Icon Alert Section */}
+                  <div className="flex justify-center mb-6">
+                    <div className="relative">
+                      {/* Efek Glow di belakang icon */}
+                      <div className="absolute inset-0 bg-red-500 blur-2xl opacity-20 rounded-full"></div>
+
+                      <div className="relative bg-red-500/10 border border-red-500/30 p-5 rounded-full text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                        <AlertTriangle size={40} strokeWidth={2.5} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Text Section */}
+                  <h2 className="text-sm font-black font-bold text-[var(--foreground)] uppercase tracking-[0.2em] mb-2">
+                    Access Denied
+                  </h2>
+                  <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-8 max-w-[250px] mx-auto leading-relaxed">
+                    Please join our Discord server to get access and complete
+                    your registration.
+                  </p>
+
+                  {/* Discord Button */}
+                  <button
+                    onClick={() => {
+                      window.open(
+                        'https://link.nismara.web.id/discord',
+                        '_blank',
+                      );
+                    }}
+                    className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                  >
+                    <DiscordIcon className="w-5 h-5" /> Join Discord Server
+                  </button>
                 </div>
               )}
             </div>

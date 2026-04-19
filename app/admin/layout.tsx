@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import Sidebar from '@/components/admin/Sidebar';
 
 export default async function AdminLayout({
   children,
@@ -41,56 +42,28 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-900 text-white">
-      {/* SIDEBAR */}
-      <div className="w-64 bg-gray-950 p-6 border-r border-gray-800">
-        <h1 className="text-xl font-bold mb-8 text-blue-500">Admin Panel</h1>
+    <div className="flex min-h-screen bg-[#050505] text-white">
+      {/* Sidebar - Client Component */}
+      <Sidebar />
 
-        <nav className="flex flex-col gap-4">
-          <Link href="/admin" className="hover:text-blue-400 transition-colors">
-            Dashboard
-          </Link>
-          <Link
-            href="/admin/members"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Members
-          </Link>
-          <Link
-            href="/admin/servers"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Servers
-          </Link>
-          <Link
-            href="/admin/practice"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Practice Server
-          </Link>
-          <Link
-            href="/admin/cars"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Cars
-          </Link>
-          <Link
-            href="/admin/tracks"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Tracks
-          </Link>
-          <Link
-            href="/admin/events"
-            className="hover:text-blue-400 transition-colors"
-          >
-            Events
-          </Link>
-        </nav>
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 h-screen overflow-y-auto">
+        {/* Top Header Blur (Optional) */}
+        <div className="sticky top-0 z-40 w-full h-16 bg-[#050505]/60 backdrop-blur-xl border-b border-white/5 px-8 flex items-center justify-end">
+          {/* Kamu bisa tambah Search bar atau User Profile di sini */}
+          <div className="text-[10px] font-bold text-white/30 tracking-widest uppercase">
+            {new Date().toLocaleDateString('id-ID', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </div>
+        </div>
 
-      {/* CONTENT */}
-      <div className="flex-1 p-8 overflow-auto">{children}</div>
+        {/* Page Content */}
+        <div className="p-8">{children}</div>
+      </main>
     </div>
   );
 }

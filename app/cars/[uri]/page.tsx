@@ -31,7 +31,6 @@ export default function CarDetailPage() {
 
   useEffect(() => {
     async function fetchCarDetails() {
-      // PERUBAHAN: Menambahkan pengambilan data `car_addons`
       const { data, error } = await supabase
         .from('cars')
         .select(
@@ -89,13 +88,13 @@ export default function CarDetailPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center text-purple-500 animate-pulse font-bold italic bg-[#050505]">
+      <div className="min-h-screen flex items-center justify-center text-[var(--accent)] animate-pulse font-bold italic bg-[var(--background)] transition-colors duration-300">
         Loading Vehicle Data...
       </div>
     );
   if (!car)
     return (
-      <div className="min-h-screen flex items-center justify-center text-white font-bold text-2xl bg-[#050505]">
+      <div className="min-h-screen flex items-center justify-center text-[var(--foreground)] font-bold text-2xl bg-[var(--background)] transition-colors duration-300">
         Vehicle not found.
       </div>
     );
@@ -112,33 +111,33 @@ export default function CarDetailPage() {
     : car.image_url;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8 transition-colors duration-300">
+      <div className="max-w-6xl mx-auto space-y-8 pt-16">
         {/* --- HEADER & MAIN IMAGE --- */}
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Bagian Kiri: Gambar & Pilihan Livery */}
           <div className="space-y-4">
-            <div className="aspect-video bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl relative">
+            <div className="aspect-video bg-[var(--background)] rounded-2xl overflow-hidden border border-[var(--card-border)] shadow-lg relative transition-colors">
               {displayImage ? (
                 <img
                   src={displayImage}
                   alt={car.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold italic">
+                <div className="w-full h-full flex items-center justify-center text-[var(--muted)] font-bold italic">
                   NO PREVIEW
                 </div>
               )}
-              <div className="absolute top-4 left-4 bg-purple-600 text-white text-xs font-black px-3 py-1 rounded uppercase tracking-widest shadow-lg">
+              <div className="absolute top-4 left-4 bg-[var(--accent)] text-white text-xs font-black px-3 py-1 rounded uppercase tracking-widest shadow-lg">
                 {car.class || 'UNCLASSIFIED'}
               </div>
             </div>
 
             {/* Pilihan Livery untuk Registrasi */}
             {car.car_liveries?.length > 0 && (
-              <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-                <h3 className="text-xs uppercase text-gray-500 font-bold tracking-widest mb-3">
+              <div className="bg-[var(--card)] p-4 rounded-2xl border border-[var(--card-border)] shadow-sm transition-colors">
+                <h3 className="text-xs uppercase text-[var(--muted)] font-bold tracking-widest mb-3">
                   Select Entry Livery
                 </h3>
                 <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
@@ -148,8 +147,8 @@ export default function CarDetailPage() {
                       onClick={() => setSelectedLivery(livery)}
                       className={`flex-shrink-0 relative w-24 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                         selectedLivery?.id === livery.id
-                          ? 'border-purple-500 shadow-[0_0_10px_rgba(234,88,12,0.5)]'
-                          : 'border-gray-700 opacity-60 hover:opacity-100'
+                          ? 'border-[var(--accent)] shadow-[0_0_15px_var(--accent-glow)] scale-105'
+                          : 'border-[var(--card-border)] opacity-60 hover:opacity-100 hover:border-[var(--muted)]'
                       }`}
                     >
                       <img
@@ -160,7 +159,7 @@ export default function CarDetailPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-center text-purple-400 font-bold mt-2 text-sm">
+                <p className="text-center text-[var(--accent)] font-bold mt-2 text-sm">
                   {selectedLivery?.name || 'No livery selected'}
                 </p>
               </div>
@@ -169,16 +168,16 @@ export default function CarDetailPage() {
 
           {/* Bagian Kanan: Info Kendaraan & Spesifikasi */}
           <div className="flex flex-col">
-            <h1 className="text-4xl font-black italic text-white uppercase tracking-tighter mb-1">
+            <h1 className="text-4xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-1 transition-colors">
               {car.name}
             </h1>
-            <p className="text-purple-500 font-bold uppercase tracking-widest text-sm mb-6">
-              {car.brand} • {car.country}
+            <p className="text-blue-500 font-bold uppercase tracking-widest text-sm mb-6">
+              {car.brand} {car.country ? `• ${car.country}` : ''}
             </p>
 
             {car.description && (
               <div
-                className="text-gray-400 text-sm mb-8 leading-relaxed"
+                className="text-[var(--muted)] text-sm mb-8 leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: car.description }}
               />
             )}
@@ -188,12 +187,12 @@ export default function CarDetailPage() {
                 {Object.entries(car.specs).map(([key, value]) => (
                   <div
                     key={key}
-                    className="bg-gray-900 border border-gray-800 p-4 rounded-xl flex flex-col justify-center items-center text-center shadow-inner"
+                    className="bg-[var(--card)] border border-[var(--card-border)] p-4 rounded-xl flex flex-col justify-center items-center text-center shadow-sm transition-colors"
                   >
-                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">
+                    <span className="text-[10px] text-[var(--muted)] uppercase font-bold tracking-widest mb-1">
                       {key}
                     </span>
-                    <span className="text-lg font-black text-white">
+                    <span className="text-lg font-black text-[var(--foreground)]">
                       {String(value)}
                     </span>
                   </div>
@@ -206,7 +205,7 @@ export default function CarDetailPage() {
               href={car.download_url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto w-full block text-center bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-[0.98]"
+              className="mt-auto w-full block text-center bg-gradient-to-r from-blue-600 to-[var(--accent)] hover:opacity-90 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.98]"
             >
               Download Base Mod
             </a>
@@ -218,8 +217,8 @@ export default function CarDetailPage() {
           <div className="grid md:grid-cols-2 gap-8 pt-4">
             {/* Bagian Patches & Setups (Oranye) */}
             {patchesAndSetups.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 p-6 md:p-8 rounded-2xl shadow-xl">
-                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6 flex items-center gap-3 text-white">
+              <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-2xl shadow-md transition-colors">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6 flex items-center gap-3 text-[var(--foreground)]">
                   <Wrench className="text-orange-500" size={24} />
                   Mandatory Patches & Setups
                 </h3>
@@ -231,12 +230,12 @@ export default function CarDetailPage() {
                     >
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <Settings2 size={16} className="text-orange-400" />
-                          <h4 className="font-black uppercase text-sm text-white">
+                          <Settings2 size={16} className="text-orange-500" />
+                          <h4 className="font-black uppercase text-sm text-[var(--foreground)]">
                             {patch.title}
                           </h4>
                         </div>
-                        <p className="text-[10px] font-bold text-orange-300/80 uppercase tracking-widest leading-relaxed">
+                        <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">
                           {patch.description ||
                             'Update file required for server compatibility.'}
                         </p>
@@ -245,7 +244,7 @@ export default function CarDetailPage() {
                         href={patch.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full bg-orange-600 hover:bg-orange-500 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-lg shadow-orange-500/20"
+                        className="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
                       >
                         <Download size={14} /> Download Patch
                       </a>
@@ -257,25 +256,28 @@ export default function CarDetailPage() {
 
             {/* Bagian Livery Packs (Ungu) */}
             {liveryPacks.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 p-6 md:p-8 rounded-2xl shadow-xl">
-                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6 flex items-center gap-3 text-white">
-                  <FileArchive className="text-purple-500" size={24} />
+              <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-2xl shadow-md transition-colors">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6 flex items-center gap-3 text-[var(--foreground)]">
+                  <FileArchive className="text-[var(--accent)]" size={24} />
                   Additional Livery Packs
                 </h3>
                 <div className="space-y-4">
                   {liveryPacks.map((pack: any) => (
                     <div
                       key={pack.id}
-                      className="bg-purple-500/10 border border-purple-500/20 p-5 rounded-2xl flex flex-col justify-between"
+                      className="bg-[var(--accent-glow)] border border-[var(--accent)]/30 p-5 rounded-2xl flex flex-col justify-between"
                     >
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <PaintBucket size={16} className="text-purple-400" />
-                          <h4 className="font-black uppercase text-sm text-white">
+                          <PaintBucket
+                            size={16}
+                            className="text-[var(--accent)]"
+                          />
+                          <h4 className="font-black uppercase text-sm text-[var(--foreground)]">
                             {pack.title}
                           </h4>
                         </div>
-                        <p className="text-[10px] font-bold text-purple-300/80 uppercase tracking-widest leading-relaxed">
+                        <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">
                           {pack.description ||
                             'Extract contents to your skins folder.'}
                         </p>
@@ -284,7 +286,7 @@ export default function CarDetailPage() {
                         href={pack.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-lg shadow-purple-500/20"
+                        className="flex items-center justify-center gap-2 w-full bg-[var(--accent)] hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
                       >
                         <Download size={14} /> Download Pack
                       </a>
@@ -306,14 +308,15 @@ export default function CarDetailPage() {
 
         {/* --- CHART SECTION: Dyno Curve --- */}
         {chartData.length > 0 && (
-          <div className="bg-gray-900 border border-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl relative overflow-hidden mt-8">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-600/5 blur-[100px] rounded-full pointer-events-none"></div>
+          <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-2xl shadow-md relative overflow-hidden mt-8 transition-colors">
+            {/* Glow effect menyesuaikan dengan tema */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
-            <h2 className="text-2xl font-black italic text-white uppercase tracking-tighter mb-2">
+            <h2 className="text-2xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-2">
               Engine Telemetry
             </h2>
-            <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mb-8">
+            <p className="text-xs text-[var(--muted)] font-bold tracking-widest uppercase mb-8">
               Power & Torque vs Engine Speed (RPM)
             </p>
 
@@ -325,13 +328,13 @@ export default function CarDetailPage() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#374151"
+                    stroke="var(--card-border)"
                     vertical={false}
                   />
                   <XAxis
                     dataKey="rpm"
-                    stroke="#9CA3AF"
-                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                    stroke="var(--muted)"
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     tickFormatter={(value) => `${value}`}
                     type="number"
                     domain={['dataMin', 'dataMax']}
@@ -351,13 +354,16 @@ export default function CarDetailPage() {
 
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#111827',
-                      borderColor: '#374151',
-                      borderRadius: '8px',
-                      color: '#fff',
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--card-border)',
+                      borderRadius: '12px',
+                      color: 'var(--foreground)',
+                      boxShadow:
+                        '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                     }}
                     itemStyle={{ fontWeight: 'bold' }}
                     labelFormatter={(label) => `${label} RPM`}
+                    labelStyle={{ color: 'var(--muted)', marginBottom: '8px' }}
                   />
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
@@ -372,7 +378,7 @@ export default function CarDetailPage() {
                     activeDot={{
                       r: 6,
                       fill: '#F97316',
-                      stroke: '#111827',
+                      stroke: 'var(--card)',
                       strokeWidth: 2,
                     }}
                   />
@@ -387,7 +393,7 @@ export default function CarDetailPage() {
                     activeDot={{
                       r: 6,
                       fill: '#3B82F6',
-                      stroke: '#111827',
+                      stroke: 'var(--card)',
                       strokeWidth: 2,
                     }}
                   />

@@ -181,7 +181,7 @@ export default function MembersAdmin() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-black italic uppercase flex items-center gap-3">
+          <h1 className="text-3xl font-black uppercase flex items-center gap-3">
             <Users className="text-purple-500" size={32} /> Driver Management
           </h1>
           <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">

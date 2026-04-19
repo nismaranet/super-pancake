@@ -1,36 +1,42 @@
-import { supabase } from '@/lib/supabaseClient'
-import LiveServerInfo from '@/components/LiveServerInfo'
+import { supabase } from '@/lib/supabaseClient';
+import LiveServerInfo from '@/components/LiveServerInfo';
 
 export default async function PracticeServerPage({ params }: any) {
-  const resolvedParams = await params
-  const id = resolvedParams.id
+  const resolvedParams = await params;
+  const uri = resolvedParams.uri;
 
   // FETCH: Data Practice beserta relasi mobilnya (Many-to-Many)
   const { data: practice } = await supabase
     .from('practices')
-    .select(`
+    .select(
+      `
       *,
       practice_cars (
         cars (*)
       )
-    `)
-    .eq('id', id)
-    .single()
+    `,
+    )
+    .eq('uri', uri)
+    .single();
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 text-gray-200">
-      
       {/* HEADER SECTION */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
-          <span className="bg-blue-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">Practice Session</span>
+          <span className="bg-blue-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">
+            Practice Session
+          </span>
           <div className="h-[1px] flex-grow bg-blue-600/30"></div>
         </div>
         <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
           {practice?.name}
         </h1>
         <p className="text-gray-500 mt-2 font-mono text-sm">
-          CAPACITY: <span className="text-blue-400">{practice?.max_players || '24'} SLOTS</span>
+          CAPACITY:{' '}
+          <span className="text-blue-400">
+            {practice?.max_players || '24'} SLOTS
+          </span>
         </p>
       </div>
 
@@ -38,7 +44,7 @@ export default async function PracticeServerPage({ params }: any) {
       <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden mb-12 shadow-2xl relative">
         {/* Decorative corner element */}
         <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
-        
+
         <div className="flex flex-col lg:flex-row">
           {/* Image Side */}
           <div className="lg:w-2/3 relative h-64 lg:h-auto overflow-hidden">
@@ -62,8 +68,12 @@ export default async function PracticeServerPage({ params }: any) {
                   target="_blank"
                   className="flex items-center justify-between bg-gray-800 border border-gray-700 p-4 rounded-xl group hover:border-blue-500 transition-all"
                 >
-                  <span className="font-bold text-sm tracking-widest uppercase">Download Track</span>
-                  <span className="bg-blue-600 p-1 rounded group-hover:px-4 transition-all text-xs font-black italic">GET</span>
+                  <span className="font-bold text-sm tracking-widest uppercase">
+                    Download Track
+                  </span>
+                  <span className="bg-blue-600 p-1 rounded group-hover:px-4 transition-all text-xs font-black italic">
+                    GET
+                  </span>
                 </a>
               )}
 
@@ -73,8 +83,12 @@ export default async function PracticeServerPage({ params }: any) {
                   target="_blank"
                   className="flex items-center justify-between bg-blue-600 p-4 rounded-xl group hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20"
                 >
-                  <span className="font-bold text-sm tracking-widest uppercase text-white">Download Car Pack</span>
-                  <span className="bg-red-600 p-1 rounded group-hover:px-4 transition-all text-xs font-black italic">GET</span>
+                  <span className="font-bold text-sm tracking-widest uppercase text-white">
+                    Download Car Pack
+                  </span>
+                  <span className="bg-red-600 p-1 rounded group-hover:px-4 transition-all text-xs font-black italic">
+                    GET
+                  </span>
                 </a>
               )}
 
@@ -98,7 +112,9 @@ export default async function PracticeServerPage({ params }: any) {
 
       {/* VEHICLE FLEET SECTION */}
       <div className="flex items-center gap-4 mb-8">
-        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">List Vehicles</h2>
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">
+          List Vehicles
+        </h2>
         <div className="h-[2px] flex-grow bg-gradient-to-r from-blue-600 to-transparent opacity-20"></div>
       </div>
 
@@ -107,13 +123,16 @@ export default async function PracticeServerPage({ params }: any) {
           practice.practice_cars.map((item: any) => {
             const car = item.cars;
             return (
-              <div key={car.id} className="group bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-500 shadow-xl flex flex-col">
+              <div
+                key={car.id}
+                className="group bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-500 shadow-xl flex flex-col"
+              >
                 {/* Car Preview */}
                 <div className="h-40 relative overflow-hidden bg-black">
-                  <img 
-                    src={car.image_url || 'https://picsum.photos/400/225'} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-700 opacity-80 group-hover:opacity-100" 
-                    alt={car.name} 
+                  <img
+                    src={car.image_url || 'https://picsum.photos/400/225'}
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-700 opacity-80 group-hover:opacity-100"
+                    alt={car.name}
                   />
                 </div>
 
@@ -121,18 +140,18 @@ export default async function PracticeServerPage({ params }: any) {
                   <h4 className="font-black text-white text-lg uppercase tracking-tighter mb-6 leading-none group-hover:text-blue-400 transition">
                     {car.name}
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 gap-2">
-                    <a 
-                      href={car.download_url} 
+                    <a
+                      href={car.download_url}
                       className="bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-lg shadow-blue-900/40 text-center"
                     >
                       Download Car Mod
                     </a>
-                    
+
                     {car.skin_url && (
-                      <a 
-                        href={car.skin_url} 
+                      <a
+                        href={car.skin_url}
                         className="bg-transparent border border-gray-700 text-gray-400 hover:border-blue-400 hover:text-blue-400 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition text-center"
                       >
                         Download Official Skin
@@ -145,10 +164,12 @@ export default async function PracticeServerPage({ params }: any) {
           })
         ) : (
           <div className="col-span-full py-12 text-center bg-gray-900 rounded-3xl border border-dashed border-gray-800">
-            <p className="text-gray-600 italic font-mono uppercase tracking-widest">No vehicles assigned to this session.</p>
+            <p className="text-gray-600 italic font-mono uppercase tracking-widest">
+              No vehicles assigned to this session.
+            </p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

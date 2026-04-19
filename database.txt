@@ -1,0 +1,215 @@
+-- WARNING This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.car_addons (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  car_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  addon_type text NOT NULL,
+  download_url text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT car_addons_pkey PRIMARY KEY (id),
+  CONSTRAINT car_addons_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.car_assignments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  car_id uuid,
+  server_id uuid,
+  created_at timestamp with time zone DEFAULT timezone('utc'text, now()),
+  CONSTRAINT car_assignments_pkey PRIMARY KEY (id),
+  CONSTRAINT car_assignments_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id),
+  CONSTRAINT car_assignments_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id)
+);
+CREATE TABLE public.car_liveries (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  car_id uuid NOT NULL,
+  name text NOT NULL,
+  image_url text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT car_liveries_pkey PRIMARY KEY (id),
+  CONSTRAINT car_liveries_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.cars (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  image_url text,
+  download_url text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  brand text,
+  class text,
+  country text,
+  description text,
+  specs jsonb,
+  torque_curve jsonb,
+  power_curve jsonb,
+  model_key text UNIQUE,
+  uri text UNIQUE,
+  CONSTRAINT cars_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.driver_track_stats (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  driver_guid text NOT NULL,
+  track_model text NOT NULL,
+  total_laps integer DEFAULT 0,
+  total_distance_km double precision DEFAULT 0.0,
+  CONSTRAINT driver_track_stats_pkey PRIMARY KEY (id),
+  CONSTRAINT driver_track_profile_fkey FOREIGN KEY (driver_guid) REFERENCES public.profiles(steam_guid)
+);
+CREATE TABLE public.event_cars (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  event_id uuid,
+  car_name text,
+  car_image text,
+  download_url text,
+  created_at timestamp without time zone DEFAULT now(),
+  car_id uuid,
+  CONSTRAINT event_cars_pkey PRIMARY KEY (id),
+  CONSTRAINT event_cars_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT event_cars_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.event_driver_stats (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  event_id uuid,
+  cuts integer DEFAULT 0,
+  collisions integer DEFAULT 0,
+  laps_completed integer DEFAULT 0,
+  sr_change double precision DEFAULT 0,
+  xp_gained integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT event_driver_stats_pkey PRIMARY KEY (id),
+  CONSTRAINT event_driver_stats_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT event_driver_stats_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+);
+CREATE TABLE public.event_participants (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  event_id uuid,
+  driver_number text,
+  driver_name text,
+  team_name text,
+  car_name text,
+  car_image text,
+  created_at timestamp without time zone DEFAULT now(),
+  user_id uuid,
+  CONSTRAINT event_participants_pkey PRIMARY KEY (id),
+  CONSTRAINT event_participants_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT event_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text,
+  description text,
+  image_url text,
+  event_date timestamp without time zone,
+  created_at timestamp without time zone DEFAULT now(),
+  timezone text,
+  practice_server text,
+  event_tag text,
+  event_class text,
+  results jsonb DEFAULT '[]'jsonb,
+  track_id uuid,
+  is_processed boolean DEFAULT false,
+  is_registration_open boolean DEFAULT true,
+  max_participants integer DEFAULT 20,
+  uri text UNIQUE,
+  CONSTRAINT events_pkey PRIMARY KEY (id),
+  CONSTRAINT events_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.hotlap_data (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  driver_guid text NOT NULL,
+  track_model text NOT NULL,
+  car_model text NOT NULL,
+  best_lap integer NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  server_name text DEFAULT 'Primary Server'text,
+  CONSTRAINT hotlap_data_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.practice_cars (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  practice_id uuid,
+  car_id uuid,
+  CONSTRAINT practice_cars_pkey PRIMARY KEY (id),
+  CONSTRAINT practice_cars_practice_id_fkey FOREIGN KEY (practice_id) REFERENCES public.practices(id),
+  CONSTRAINT practice_cars_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.practices (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  image_url text,
+  max_players integer,
+  join_link text,
+  full_pack_url text,
+  live_api_url text,
+  server_tag text,
+  track_id uuid,
+  CONSTRAINT practices_pkey PRIMARY KEY (id),
+  CONSTRAINT practices_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  username text UNIQUE CHECK (char_length(username) = 3 AND char_length(username) = 20 AND username !~ 's'text),
+  avatar_url text,
+  steam_guid text UNIQUE CHECK (steam_guid IS NULL OR steam_guid ~ '^[0-9]{17}$'text),
+  discord_id text UNIQUE,
+  updated_at timestamp with time zone DEFAULT timezone('utc'text, now()),
+  role text DEFAULT 'user'text CHECK (role = ANY (ARRAY['user'text, 'admin'text, 'moderator'text])),
+  safety_rating double precision DEFAULT 2.50,
+  total_xp integer DEFAULT 0,
+  driver_level integer DEFAULT 1,
+  display_name text UNIQUE CHECK (char_length(display_name) = 3 AND char_length(display_name) = 30),
+  total_starts integer DEFAULT 0,
+  total_wins integer DEFAULT 0,
+  total_podiums integer DEFAULT 0,
+  unranked_wins integer DEFAULT 0,
+  unranked_podiums integer DEFAULT 0,
+  unranked_starts integer DEFAULT 0,
+  total_distance_km double precision DEFAULT 0.0,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.server_cars (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  server_id uuid,
+  car_id uuid,
+  CONSTRAINT server_cars_pkey PRIMARY KEY (id),
+  CONSTRAINT server_cars_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id),
+  CONSTRAINT server_cars_car_id_fkey FOREIGN KEY (car_id) REFERENCES public.cars(id)
+);
+CREATE TABLE public.servers (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  image_url text,
+  max_players integer,
+  join_link text,
+  full_pack_url text,
+  live_api_url text,
+  server_tag text,
+  track_id uuid,
+  CONSTRAINT servers_pkey PRIMARY KEY (id),
+  CONSTRAINT servers_track_id_fkey FOREIGN KEY (track_id) REFERENCES public.tracks(id)
+);
+CREATE TABLE public.tracks (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  image_url text,
+  download_url text,
+  description text,
+  outline text,
+  author text,
+  country text,
+  city text,
+  length text,
+  width text,
+  pitboxes text,
+  run_direction text,
+  year text,
+  tags jsonb,
+  geotags jsonb,
+  created_at timestamp without time zone DEFAULT now(),
+  track_model text UNIQUE,
+  CONSTRAINT tracks_pkey PRIMARY KEY (id)
+);
