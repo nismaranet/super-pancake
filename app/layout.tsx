@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CookieConsent from '@/components/CookieConsent';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = GeistFont({
   variable: '--font-geist-sans',
@@ -44,6 +45,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           <SpeedInsights />
+          <Analytics />
           {/* Menambahkan padding top agar konten tidak tertutup 
             navbar yang posisinya fixed 
           */}
