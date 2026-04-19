@@ -43,7 +43,6 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col transition-colors duration-300">
         <Providers>
           <Navbar />
-          <SpeedInsights />
           {/* Menambahkan padding top agar konten tidak tertutup 
             navbar yang posisinya fixed 
           */}
@@ -51,6 +50,7 @@ export default function RootLayout({
           <CookieConsent />
           <Footer />
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
