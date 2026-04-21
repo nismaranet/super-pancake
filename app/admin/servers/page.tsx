@@ -42,6 +42,10 @@ export default function ServersAdmin() {
   const [fullPackUrl, setFullPackUrl] = useState('');
   const [liveApiUrl, setLiveApiUrl] = useState('');
 
+  const [description, setDescription] = useState('');
+  const [requiredPlugins, setRequiredPlugins] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+
   // ================= UPLOAD STATES =================
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -135,7 +139,7 @@ export default function ServersAdmin() {
 
     const payload = {
       name,
-      uri: setUri,
+      uri,
       image_url: imageUrl,
       server_tag: serverTag,
       track_id: selectedTrackId || null,
@@ -143,6 +147,8 @@ export default function ServersAdmin() {
       join_link: joinLink,
       full_pack_url: fullPackUrl,
       live_api_url: liveApiUrl,
+      description,
+      required_plugins: requiredPlugins,
     };
 
     if (editingId) {
@@ -171,6 +177,8 @@ export default function ServersAdmin() {
     setJoinLink(s.join_link || '');
     setFullPackUrl(s.full_pack_url || '');
     setLiveApiUrl(s.live_api_url || '');
+    setDescription(s.description || '');
+    setRequiredPlugins(s.required_plugins || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -185,6 +193,8 @@ export default function ServersAdmin() {
     setJoinLink('');
     setFullPackUrl('');
     setLiveApiUrl('');
+    setDescription('');
+    setRequiredPlugins('');
   }
 
   // ================= RELATIONAL CAR ACTIONS =================
@@ -355,6 +365,69 @@ export default function ServersAdmin() {
                       />
                     </label>
                   </div>
+                </div>
+              </div>
+
+              {/* Group: Deskripsi & Plugins (TAMBAHAN BARU) */}
+              <div className="space-y-4 bg-gray-800/30 p-4 rounded-2xl border border-gray-700/50">
+                <div className="group">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-purple-500">
+                    Server Briefing / Description
+                  </label>
+                  <textarea
+                    placeholder="Tulis briefing balap, aturan, atau deskripsi server di sini..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={4}
+                    className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none transition text-sm text-white resize-y"
+                  />
+                </div>
+                <div className="group space-y-2">
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-[10px] text-gray-500 uppercase font-bold transition group-focus-within:text-purple-500">
+                      Server Briefing (Markdown Supported)
+                    </label>
+                    <button
+                      onClick={() => setShowPreview(!showPreview)}
+                      className="text-[9px] px-2 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded hover:bg-purple-500 hover:text-white transition uppercase font-black"
+                    >
+                      {showPreview ? 'Edit Text' : 'Show Preview'}
+                    </button>
+                  </div>
+
+                  {showPreview ? (
+                    <div className="w-full mt-1 p-4 rounded-xl bg-gray-900/50 border border-purple-500/30 text-sm text-gray-300 min-h-[120px] prose prose-invert max-w-none">
+                      {/* Jika tidak ingin instal react-markdown di admin, bisa tampilkan teks mentah dulu */}
+                      {description || (
+                        <span className="italic opacity-50">
+                          Belum ada deskripsi...
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <textarea
+                      placeholder="Gunakan Markdown: **tebal**, *miring*, [link](url), atau - list"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={6}
+                      className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none transition text-sm text-white resize-y font-mono"
+                    />
+                  )}
+                  <p className="text-[9px] text-gray-600 italic ml-1">
+                    Tips: Gunakan ** ** untuk tebal, - untuk list, dan
+                    [Nama](Link) untuk tautan.
+                  </p>
+                </div>
+                <div className="group">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-purple-500">
+                    Required Plugins (Pisahkan dengan koma)
+                  </label>
+                  <input
+                    placeholder="e.g. CSP 0.2.3, Sol 2.2.9, Real Penalty"
+                    value={requiredPlugins}
+                    onChange={(e) => setRequiredPlugins(e.target.value)}
+                    className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none transition text-sm text-white"
+                  />
                 </div>
               </div>
 

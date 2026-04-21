@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
           // Posisi Driver (1-based index)
           const position = detail.Result.indexOf(dr) + 1;
           const isRace = detail.Type === "RACE";
+          const isQualify = detail.Type === "QUALIFY";
 
           // Hitung Insiden
           const incidents = { col_car: 0, col_env: 0, cuts: 0 };
@@ -108,6 +109,20 @@ Deno.serve(async (req) => {
             }
           }
 
+          if (isQualify) {
+            REWARD.BASE_PARTICIPATION_NRC = 0;
+            if (position === 1) {
+              basePodiumNrc = REWARD.PODIUM_1_NRC / 2;
+              basePodiumXp = REWARD.PODIUM_1_XP / 2;
+            } else if (position === 2) {
+              basePodiumNrc = REWARD.PODIUM_2_NRC / 2;
+              basePodiumXp = REWARD.PODIUM_2_XP / 2;
+            } else if (position === 3) {
+              basePodiumNrc = REWARD.PODIUM_3_NRC / 2;
+              basePodiumXp = REWARD.PODIUM_3_XP / 2;
+            }
+          }
+
           const xpGained = (dr.NumLaps * REWARD.XP_PER_LAP) + basePodiumXp;
           const nrcChange = REWARD.BASE_PARTICIPATION_NRC + 
                             (dr.NumLaps * REWARD.NRC_PER_LAP) + 
@@ -121,6 +136,77 @@ Deno.serve(async (req) => {
                            (incidents.col_car * FINES.COLLISION_CAR_SR) + 
                            (incidents.col_env * FINES.COLLISION_ENV_SR) + 
                            (incidents.cuts * FINES.CUT_SR);
+
+            if (xpGained > 0 && profileMember) {
+            // A. Cari tahu apakah driver ini adalah member aktif di sebuah tim
+            const { data: teamMember } = await supabase
+              .from('team_members')
+              .select('team_id')
+              .eq('profile_id', profileMember.id)
+              .eq('status', 'active')
+              .maybeSingle();
+
+            if (teamMember && teamMember.team_id) {
+            // B. Ambil total_xp tim saat ini
+            const { data: teamData } = await supabase
+              .from('teams')
+              .select('total_xp')
+              .eq('id', teamMember.team_id)
+              .single();
+
+            if (teamData) {
+              const newTeamXp = teamData.total_xp + earnedXp;
+
+              // C. Update XP langsung ke tabel teams
+              await supabase
+                .from('teams')
+                .update({ total_xp: newTeamXp })
+                .eq('id', teamMember.team_id);
+              
+              // D. KALKULASI STATISTIK TIM (Replikasi logika dari Frontend)
+              // Ambil profil semua member aktif di tim ini untuk dihitung rata-ratanya
+              const { data: membersData } = await supabase
+                .from('team_members')
+                .select('profiles(total_distance_km, safety_rating)')
+                .eq('team_id', teamMember.team_id)
+                .eq('status', 'active');
+
+              let totalDist = 0;
+              let srSum = 0;
+              let validDrivers = 0;
+
+              if (membersData) {
+                membersData.forEach((m: any) => {
+                  // Sama seperti di frontend, handle Supabase array relationship
+                  const prof = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+                  if (prof) {
+                    validDrivers++;
+                    totalDist += prof.total_distance_km || 0;
+                    srSum += prof.safety_rating || 0;
+                  }
+                });
+              }
+
+              const calculatedAvgSR = validDrivers > 0 ? Number((srSum / validDrivers).toFixed(2)) : 0;
+
+              // E. UPSERT KE TABEL TEAM_DAILY_STATS
+              const today = new Date().toISOString().split('T')[0]; // Dapatkan YYYY-MM-DD
+              
+              const { error: historyErr } = await supabase.from('team_daily_stats').upsert({
+                team_id: teamMember.team_id,
+                record_date: today,
+                total_distance_km: totalDist,
+                avg_safety_rating: calculatedAvgSR,
+                total_xp: newTeamXp
+              }, { onConflict: 'team_id, record_date' });
+
+              if (historyErr) {
+                console.error(`[ERROR TEAM HISTORY]`, historyErr.message);
+              } else {
+                console.log(`[TEAM] Daily Stats Saved! Team: ${teamMember.team_id} | XP: ${newTeamXp} | AvgSR: ${calculatedAvgSR}`);
+              }
+            }
+          }
 
           // 1. Update Profile
           await supabase.from('profiles').update({

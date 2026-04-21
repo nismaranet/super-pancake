@@ -27,6 +27,7 @@ import {
   ToggleLeft,
   ToggleRight,
   CalendarDays,
+  Trophy,
 } from 'lucide-react';
 
 export default function EventsAdmin() {
@@ -40,6 +41,7 @@ export default function EventsAdmin() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [practices, setPractices] = useState<any[]>([]);
+  const [activeChampionships, setActiveChampionships] = useState<any[]>([]);
 
   // ================= FORM STATES =================
   const [title, setTitle] = useState('');
@@ -52,9 +54,12 @@ export default function EventsAdmin() {
   const [selectedTrackId, setSelectedTrackId] = useState('');
   const [selectedPracticeServer, setSelectedPracticeServer] = useState('');
   const [eventClass, setEventClass] = useState('');
+  const [entryFee, setEntryFee] = useState(0);
   const [maxParticipants, setMaxParticipants] = useState(40);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
   const [results, setResults] = useState<any[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [championshipId, setChampionshipId] = useState('');
 
   // ================= UPLOAD STATES =================
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -92,6 +97,15 @@ export default function EventsAdmin() {
         .select('id, name, brand, image_url')
         .order('brand', { ascending: true });
 
+      const fetchChampionshipsData = async () => {
+        const { data } = await supabase
+          .from('championships')
+          .select('id, name')
+          .eq('is_active', true); // Hanya ambil musim yang masih berjalan
+        if (data) setActiveChampionships(data);
+      };
+
+      await fetchChampionshipsData();
       setEvents(eventsData || []);
       setTracks(tracksData || []);
       setAvailableCars(carsData || []);
@@ -255,6 +269,7 @@ export default function EventsAdmin() {
       description,
       event_tag: tag,
       image_url: imageUrl,
+      entry_fee: entryFee,
       event_date: eventDate,
       timezone,
       event_class: eventClass,
@@ -263,6 +278,7 @@ export default function EventsAdmin() {
       max_participants: maxParticipants,
       is_registration_open: isRegistrationOpen,
       results: results,
+      championship_id: championshipId || null,
     };
 
     if (editingId) {
@@ -289,8 +305,10 @@ export default function EventsAdmin() {
     setUri('');
     setDescription('');
     setTag('');
+    setEntryFee(0);
     setImageUrl('');
     setEventDate('');
+    setChampionshipId('');
     setTimezone('WIB');
     setSelectedTrackId('');
     setSelectedPracticeServer('');
@@ -299,13 +317,16 @@ export default function EventsAdmin() {
     setIsRegistrationOpen(true);
     setResults([]);
     setEditingId(null);
+    setChampionshipId('');
   };
 
   const handleEdit = (event: any) => {
     setEditingId(event.id);
     setTitle(event.title || '');
     setUri(event.uri || '');
+    setEntryFee(event.entry_fee || '');
     setDescription(event.description || '');
+    setChampionshipId(event.championship_id || '');
     setTag(event.event_tag || '');
     setImageUrl(event.image_url || '');
     setEventDate(event.event_date || '');
@@ -506,6 +527,31 @@ export default function EventsAdmin() {
                 </div>
               </div>
 
+              {/* Group: Championship */}
+              <div className="grid grid-cols-2 gap-4 bg-gray-800/30 p-4 rounded-2xl border border-gray-700/50">
+                <div className="group col-span-2">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-emerald-500 flex items-center gap-1">
+                    <MapPin size={10} /> Link to Championship (Optional)
+                  </label>
+                  <select
+                    value={championshipId}
+                    onChange={(e) => setChampionshipId(e.target.value)}
+                    className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-emerald-500 outline-none transition text-xs text-white"
+                  >
+                    <option value="">-- Choose Championship --</option>
+                    {activeChampionships.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        🏆 {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] text-gray-500 italic ml-1">
+                    Pilih jika event ini adalah seri dari sebuah musim
+                    kejuaraan.
+                  </p>
+                </div>
+              </div>
+
               {/* Group: Date & Location */}
               <div className="grid grid-cols-2 gap-4 bg-gray-800/30 p-4 rounded-2xl border border-gray-700/50">
                 <div className="group">
@@ -600,6 +646,22 @@ export default function EventsAdmin() {
                 </div>
               </div>
 
+              {/* Group: Setup & Tags */}
+              <div className="grid grid-cols-1 gap-4 bg-gray-800/30 p-4 rounded-2xl border border-gray-700/50">
+                <div className="group">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-emerald-500 flex items-center gap-1">
+                    <Users size={10} /> Entry Fee / Biaya Masuk (NRC)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={entryFee}
+                    onChange={(e) => setEntryFee(parseInt(e.target.value))}
+                    className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-emerald-500 outline-none transition text-sm text-white"
+                  />
+                </div>
+              </div>
+
               {/* Toggle Registration */}
               <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-2xl border border-gray-700/50">
                 <div className="flex items-center gap-2">
@@ -632,12 +694,48 @@ export default function EventsAdmin() {
               </div>
 
               {/* Group: Editor */}
-              <div className="group bg-gray-800/30 p-4 rounded-2xl border border-gray-700/50">
-                <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-emerald-500 mb-2 block">
-                  Event Regulations / Description
-                </label>
-                <div className="rounded-xl overflow-hidden border border-gray-700 focus-within:border-emerald-500 transition">
-                  <Editor value={description} onChange={setDescription} />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest ml-1">
+                    Event Description (Markdown)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="text-[9px] px-3 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500 hover:text-white transition uppercase font-black"
+                  >
+                    {showPreview ? 'Edit Content' : 'Preview Layout'}
+                  </button>
+                </div>
+
+                {showPreview ? (
+                  <div className="w-full mt-1 p-6 rounded-2xl bg-gray-900/50 border border-purple-500/30 text-sm text-gray-300 min-h-[200px] prose prose-invert prose-sm max-w-none">
+                    {/* Jika sudah install react-markdown di admin, gunakan komponennya di sini */}
+                    {description || (
+                      <span className="italic opacity-50 text-xs text-gray-600">
+                        No description written yet...
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    placeholder="Gunakan Markdown untuk membuat list jadwal, aturan, dll..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={10}
+                    className="w-full mt-1 p-4 rounded-2xl bg-gray-800/50 border border-gray-700 focus:border-purple-500 outline-none transition text-sm text-white resize-y font-mono leading-relaxed"
+                  />
+                )}
+                <div className="flex gap-4 ml-1">
+                  <span className="text-[8px] text-gray-600 uppercase font-bold">
+                    **Bold**
+                  </span>
+                  <span className="text-[8px] text-gray-600 uppercase font-bold">
+                    - List Item
+                  </span>
+                  <span className="text-[8px] text-gray-600 uppercase font-bold">
+                    [Link](url)
+                  </span>
                 </div>
               </div>
 
@@ -985,6 +1083,159 @@ function EventCard({
 }: any) {
   const isProcessed = event.is_processed;
 
+  // ================= CHAMPIONSHIP PARSER =================
+  // ================= CHAMPIONSHIP PARSER =================
+  const processChampionshipSession = async (
+    eventId: string,
+    sessionType: 'QUALIFY' | 'RACE1' | 'RACE2',
+    file: File,
+  ) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const text = e.target?.result as string;
+        const data = JSON.parse(text);
+
+        // PERBAIKAN: Kita ambil data dari array "Result", bukan "Cars"
+        if (!data.Result || !Array.isArray(data.Result)) {
+          return alert(
+            'Format JSON tidak valid! Array "Result" tidak ditemukan.',
+          );
+        }
+
+        const resultsData = data.Result;
+
+        // 1. Cek atau Buat Event Session
+        const sessionName =
+          sessionType === 'QUALIFY'
+            ? 'Qualifying'
+            : sessionType === 'RACE1'
+              ? 'Race 1'
+              : 'Race 2 (Reverse Grid)';
+        let sessionId = '';
+
+        const { data: existingSession } = await supabase
+          .from('event_sessions')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('session_type', sessionType)
+          .maybeSingle();
+
+        if (existingSession) {
+          sessionId = existingSession.id;
+          // Hapus hasil lama jika admin me-reupload JSON
+          await supabase
+            .from('session_results')
+            .delete()
+            .eq('session_id', sessionId);
+        } else {
+          const { data: newSession, error: sessionErr } = await supabase
+            .from('event_sessions')
+            .insert([
+              {
+                event_id: eventId,
+                session_type: sessionType,
+                session_name: sessionName,
+              },
+            ])
+            .select()
+            .single();
+          if (sessionErr) throw sessionErr;
+          sessionId = newSession.id;
+        }
+
+        // 2. Olah Data JSON (Cari Best Lap keseluruhan untuk bonus poin)
+        let overallBestLap = Infinity;
+        let bestLapDriverGuid = '';
+
+        resultsData.forEach((car: any) => {
+          const bestLap = car.BestLap;
+          // Pastikan best lap valid (bukan 0 dan lebih cepat dari yang ada)
+          if (bestLap && bestLap > 0 && bestLap < overallBestLap) {
+            overallBestLap = bestLap;
+            bestLapDriverGuid = car.DriverGuid;
+          }
+        });
+
+        // Tentukan Urutan Posisi Finish
+        // Assetto Corsa by default sudah mengurutkan array 'Result' berdasarkan posisi akhir
+        let sortedResults = [...resultsData];
+
+        // Khusus kualifikasi, kita pastikan ulang diurutkan berdasarkan BestLap untuk menghindari anomali
+        if (sessionType === 'QUALIFY') {
+          sortedResults.sort((a: any, b: any) => {
+            const lapA = a.BestLap && a.BestLap > 0 ? a.BestLap : Infinity;
+            const lapB = b.BestLap && b.BestLap > 0 ? b.BestLap : Infinity;
+            return lapA - lapB;
+          });
+        }
+
+        // 3. Ambil semua profil driver berdasarkan SteamGUID
+        const guids = sortedResults
+          .map((c: any) => c.DriverGuid)
+          .filter(Boolean);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, steam_guid')
+          .in('steam_guid', guids);
+
+        const profileMap = new Map();
+        profiles?.forEach((p) => profileMap.set(p.steam_guid, p.id));
+
+        // 4. Siapkan Data untuk di Insert ke session_results
+        const resultsToInsert = [];
+        let finishPos = 1;
+
+        for (const car of sortedResults) {
+          const guid = car.DriverGuid;
+          if (!guid) continue;
+
+          const profileId = profileMap.get(guid);
+
+          // Jika driver tidak terdaftar di web, kita skip datanya tapi posisi finish tetap berlanjut
+          if (!profileId) {
+            console.warn(
+              `Driver dengan GUID ${guid} tidak ditemukan di database.`,
+            );
+            finishPos++;
+            continue;
+          }
+
+          resultsToInsert.push({
+            session_id: sessionId,
+            profile_id: profileId,
+            finish_position: finishPos++, // Mengikuti indeks array
+            grid_position: car.GridPosition || null, // Sudah sesuai mapping JSON
+            best_lap_ms: car.BestLap && car.BestLap > 0 ? car.BestLap : null,
+            total_time_ms:
+              car.TotalTime && car.TotalTime > 0 ? car.TotalTime : null,
+            is_fastest_lap:
+              guid === bestLapDriverGuid && overallBestLap !== Infinity, // True jika GUID cocok
+          });
+        }
+
+        if (resultsToInsert.length === 0) {
+          return alert(
+            'Gagal! Tidak ada driver di JSON ini yang cocok dengan database profil di website.',
+          );
+        }
+
+        // 5. Insert ke Database
+        const { error: insertErr } = await supabase
+          .from('session_results')
+          .insert(resultsToInsert);
+        if (insertErr) throw insertErr;
+
+        alert(
+          `✅ Hasil ${sessionName} berhasil diunggah dan poin telah dikalkulasi!`,
+        );
+      };
+      reader.readAsText(file);
+    } catch (err: any) {
+      alert('Terjadi kesalahan: ' + err.message);
+    }
+  };
+
   return (
     <div className="group bg-gray-900 border border-gray-800 hover:border-emerald-500/50 rounded-3xl overflow-hidden transition-all duration-300 shadow-xl flex flex-col relative">
       <div className="h-36 bg-gray-800 relative overflow-hidden flex items-center justify-center border-b border-gray-800">
@@ -1071,23 +1322,91 @@ function EventCard({
           </button>
         </div>
 
-        {/* Kalkulator Ranked - Akan menonjol jika ada file JSON */}
-        {event.results?.length > 0 && (
-          <div className="mt-2">
-            {isProcessed ? (
-              <div className="w-full bg-gray-800/50 text-gray-400 py-2 rounded-xl text-[10px] uppercase font-bold flex items-center justify-center gap-2 border border-gray-700">
-                <Zap size={14} /> Ranked Calculated
+        {/* ACTION UPLOAD RESULTS */}
+        <div className="mt-4 pt-4 border-t border-gray-800 space-y-4">
+          {/* 1. GLOBAL STATS & SR CALCULATOR (Selalu muncul jika admin sudah upload JSON mentah ke event.results) */}
+          {event.results?.length > 0 && (
+            <div>
+              {/* Gunakan state isProcessed milikmu yang sudah ada */}
+              {isProcessed ? (
+                <div className="w-full bg-gray-800/50 text-gray-400 py-2 rounded-xl text-[10px] uppercase font-bold flex items-center justify-center gap-2 border border-gray-700">
+                  <Zap size={14} /> Global Stats Calculated
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleProcessRanked(event.id)} // Fungsi lama untuk SR & XP
+                  className="w-full bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500 hover:text-black border border-yellow-500/50 py-2 rounded-xl text-[10px] uppercase font-black transition flex justify-center items-center gap-2"
+                >
+                  <Zap size={14} /> Calculate Global Stats & SR
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 2. CHAMPIONSHIP SESSIONS PARSER (Hanya muncul jika event terkait dengan Championship) */}
+          {event.championship_id && (
+            <div className="space-y-2 pt-2 border-t border-gray-800/50">
+              <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest text-center mb-2 flex items-center justify-center gap-1">
+                <Trophy size={12} /> Championship Sessions
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="cursor-pointer bg-purple-500/10 hover:bg-purple-500 text-purple-400 hover:text-white border border-purple-500/30 py-2 rounded-xl text-[9px] uppercase font-bold transition flex flex-col items-center justify-center gap-1 text-center">
+                  <UploadCloud size={14} /> Qualify
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        processChampionshipSession(
+                          event.id,
+                          'QUALIFY',
+                          e.target.files[0],
+                        );
+                      }
+                    }}
+                  />
+                </label>
+
+                <label className="cursor-pointer bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 py-2 rounded-xl text-[9px] uppercase font-bold transition flex flex-col items-center justify-center gap-1 text-center">
+                  <UploadCloud size={14} /> Race 1
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        processChampionshipSession(
+                          event.id,
+                          'RACE1',
+                          e.target.files[0],
+                        );
+                      }
+                    }}
+                  />
+                </label>
+
+                <label className="cursor-pointer bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 py-2 rounded-xl text-[9px] uppercase font-bold transition flex flex-col items-center justify-center gap-1 text-center">
+                  <UploadCloud size={14} /> Race 2
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        processChampionshipSession(
+                          event.id,
+                          'RACE2',
+                          e.target.files[0],
+                        );
+                      }
+                    }}
+                  />
+                </label>
               </div>
-            ) : (
-              <button
-                onClick={() => handleProcessRanked(event.id)}
-                className="w-full bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500 hover:text-black border border-yellow-500/50 py-2 rounded-xl text-[10px] uppercase font-black transition flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/10"
-              >
-                <Zap size={14} /> Process Safety Rating
-              </button>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

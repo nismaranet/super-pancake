@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import EventResult from '@/components/EventResult';
 import EventRegistration from '@/components/EventRegistration';
+import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import {
   Calendar,
@@ -235,20 +236,29 @@ export default async function EventDetail({
               </div>
             </div>
 
-            {/* Briefing */}
+            {/* EVENT DESCRIPTION SECTION */}
             {!isPassed && event.description && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Info size={18} className="text-blue-500" />
-                  <h3 className="text-lg font-black italic text-[var(--foreground)] uppercase tracking-tighter">
-                    Event Briefing
-                  </h3>
-                </div>
+              <section className="bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2rem] shadow-sm transition-all overflow-hidden relative group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-transparent opacity-50" />
+
+                <h2 className="text-xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-6 flex items-center gap-3">
+                  <Info size={20} className="text-purple-500" />
+                  Race Information & Briefing
+                </h2>
+
                 <div
-                  className="bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2rem] text-[var(--muted)] text-sm leading-relaxed shadow-sm transition-colors"
-                  dangerouslySetInnerHTML={{ __html: event.description }}
-                />
-              </div>
+                  className="prose prose-sm max-w-none text-[var(--muted)] leading-relaxed
+                  prose-headings:text-[var(--foreground)] prose-headings:italic prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tighter
+                  prose-strong:text-purple-400 prose-strong:font-bold
+                  prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline prose-a:font-bold
+                  prose-ul:list-disc prose-ul:ml-5
+                  prose-ol:list-decimal prose-ol:ml-5
+                  prose-li:marker:text-purple-500
+                  whitespace-pre-wrap"
+                >
+                  <ReactMarkdown>{event.description}</ReactMarkdown>
+                </div>
+              </section>
             )}
 
             {/* Results */}
@@ -414,8 +424,10 @@ export default async function EventDetail({
             <div className="lg:col-span-1 sticky top-32 space-y-6 z-10">
               <EventRegistration
                 eventId={event.id}
+                eventName={event.title}
                 eventCars={eventCars}
                 isPassed={isPassed}
+                entryFee={event.entry_fee}
                 isRegistrationOpen={event.is_registration_open}
                 maxParticipants={maxParticipants}
                 currentParticipants={participants.length}

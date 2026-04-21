@@ -19,19 +19,19 @@ const SERVER_ENDPOINTS = [
     id: 'main',
     name: 'Main Server Racing',
     location: 'West Java, ID',
-    url: 'http://103.150.101.154',
+    url: 'https://assetto.nismara.web.id/',
   },
   {
     id: 'gs1',
     name: 'Secondary Server',
     location: 'Jakarta, ID',
-    url: 'http://8.215.48.48/',
+    url: 'https://s3.nismara.web.id/',
   },
   {
     id: 'gs2',
     name: 'Backup Server',
     location: 'Jakarta, ID',
-    url: 'http://103.26.176.179/',
+    url: 'https://amatomasaki.my.id/',
   },
 ];
 
@@ -191,6 +191,12 @@ export default function Footer() {
             © 2026 Nismara Group • v1.0.0
           </p>
           <div className="flex items-center gap-8 text-[var(--muted)]">
+            <Link
+              href="https://services.nismara.web.id/"
+              className="text-[9px] font-bold uppercase hover:text-[var(--accent)] transition"
+            >
+              Service Monitor
+            </Link>
             <Link
               href="/terms"
               className="text-[9px] font-bold uppercase hover:text-[var(--accent)] transition"
