@@ -52,8 +52,61 @@ Deno.serve(async (req) => {
 
         const sessionRes = await fetch(`${source.api_base_url}${session.results_json_url}`);
         if (!sessionRes.ok) continue;
-
+  
         const detail = await sessionRes.json();
+
+        const carToDriverMap = new Map();
+        if (detail.Cars) {
+          detail.Cars.forEach((car: any) => {
+            carToDriverMap.set(car.CarId, car.DriverGuid);
+          });
+        }
+
+        if (detail.Laps && detail.Laps.length > 0) {
+          const cond = detail.Laps[0].Conditions;
+          await supabase.from('session_conditions').insert({
+            session_id: sessionId,
+            ambient_temperature: cond?.AmbientTemp || 0,
+            road_temp: cond?.Road || 0,
+            wind_speed: cond?.WindSpeed || 0,
+            wind_direction: cond?.WindDirection || 0,
+            rain_intensity: cond?.RainIntensity || 0,
+            rain_wetness: cond?.RainWetness || 0,
+          });
+        }
+
+        if (detail.Result && detail.Result.Length > 0) {
+          const positionFinish = detail.Result.indexOf(detail.Result) + 1;
+          const leaderboardData = detail.Result.map((res: any) => ({
+            session_id: sessionId,
+            steam_guild: res.DriverGuid,
+            car_model: res.CarModel,
+            best_lap: res.BestLap,
+            total_time: res.TotalTime,
+            num_laps: res.NumLaps,
+            grid_position: res.positionFinish,
+            status: res.Disqualified ? 'DSQ' : 'FINISH'
+          }));
+          await supabase.from('session_result').upsert(leaderboardData, { onConflict: 'session_id, steam_guild' });
+        }
+
+        if (detail.Events && detail.Events.length > 0) {
+          const incidentData = detail.Events
+          .filter((e: any) => e.Type === 'COLLISION_WITH_CAR' || e.Type === 'COLLISION_WITH_ENV')
+            .map((e: any) => ({
+              session_id: sessionId,
+              incident_type: e.Type,
+              impact_speed: e.ImpactSpeed,
+              driver_1_guid: carToDriverMap.get(e.CarId),
+              driver_2_guid: e.OtherCarId !== -1 ? carToDriverMap.get(e.OtherCarId) : null,
+              timestamp_ms: e.RelPosition 
+            }));
+          
+            if (incidentData.length > 0) {
+              await supabase.from('session_incidents').insert(incidentData);
+            }
+          }
+
         const activeTrackModel = detail.TrackName;
 
         // Tarik data track untuk length
@@ -74,6 +127,7 @@ Deno.serve(async (req) => {
           const position = detail.Result.indexOf(dr) + 1;
           const isRace = detail.Type === "RACE";
           const isQualify = detail.Type === "QUALIFY";
+          const isPractice = detail.Type === "PRACTICE";
 
           // Hitung Insiden
           const incidents = { col_car: 0, col_env: 0, cuts: 0 };
@@ -137,6 +191,13 @@ Deno.serve(async (req) => {
                            (incidents.col_env * FINES.COLLISION_ENV_SR) + 
                            (incidents.cuts * FINES.CUT_SR);
 
+          if (isPractice) {
+            const nrcChange = dr.NumLaps * REWARD.NRC_PER_LAP / 2;
+            const xpGained = dr.NumLaps * REWARD.XP_PER_LAP / 2;
+            const srChange = 0; // Tidak ada perubahan SR untuk latihan
+          }
+
+
             if (xpGained > 0 && profileMember) {
             // A. Cari tahu apakah driver ini adalah member aktif di sebuah tim
             const { data: teamMember } = await supabase
@@ -155,7 +216,7 @@ Deno.serve(async (req) => {
               .single();
 
             if (teamData) {
-              const newTeamXp = teamData.total_xp + earnedXp;
+              const newTeamXp = teamData.total_xp + xpGained;
 
               // C. Update XP langsung ke tabel teams
               await supabase
@@ -210,14 +271,14 @@ Deno.serve(async (req) => {
 
           // 1. Update Profile
           await supabase.from('profiles').update({
-            unranked_starts: (profileMember.unranked_starts || 0) + (isRace ? 1 : 0),
-            unranked_wins: (profileMember.unranked_wins || 0) + (isRace && position === 1 ? 1 : 0),
-            unranked_podiums: (profileMember.unranked_podiums || 0) + (isRace && position <= 3 ? 1 : 0),
+            total_starts: (profileMember.total_starts || 0) + (isRace ? 1 : 0),
+            total_wins: (profileMember.total_wins || 0) + (isRace && position === 1 ? 1 : 0),
+            total_podiums: (profileMember.total_podiums || 0) + (isRace && position <= 3 ? 1 : 0),
             total_distance_km: (profileMember.total_distance_km || 0) + (dr.NumLaps * trackLengthKm),
             total_playing_time: (profileMember.total_playing_time || 0) + Math.floor(dr.TotalTime / 1000),
             total_xp: (profileMember.total_xp || 0) + xpGained,
             nrc_coin: (profileMember.nrc_coin || 0) + nrcChange,
-            unranked_safety_rating: Math.max(0, Math.min(100, (profileMember.unranked_safety_rating || 2.5) + srChange)),
+            safety_rating: Math.max(0, Math.min(100, (profileMember.safety_rating || 2.5) + srChange)),
             updated_at: new Date().toISOString()
           }).eq('steam_guid', dr.DriverGuid);
 
@@ -234,7 +295,9 @@ Deno.serve(async (req) => {
             sr_change: srChange,
             incidents_car: incidents.col_car,
             incidents_env: incidents.col_env,
-            track_cuts: incidents.cuts
+            track_cuts: incidents.cuts,
+            playing_time: Math.floor(dr.TotalTime / 1000),
+            distance_km: dr.NumLaps * trackLengthKm
           });
           
           // 3. Upsert Hotlap
@@ -252,16 +315,25 @@ Deno.serve(async (req) => {
             total_laps: (curTrackStats?.total_laps || 0) + dr.NumLaps,
             total_distance_km: (curTrackStats?.total_distance_km || 0) + (dr.NumLaps * trackLengthKm)
           }, { onConflict: 'driver_guid, track_model' });
+          
         }
-
-        await supabase.from('processed_sessions').insert({ session_id: sessionId });
-        console.log(`[DONE] Selesai memproses sesi: ${sessionId}`);
       }
-    }
 
-    return new Response(JSON.stringify({ status: "success" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  } catch (err: any) {
-    console.error("[CRITICAL ERROR]", err.message);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+      // 6. Tandai Sesi Selesai Diproses
+      await supabase.from('processed_sessions').insert({ session_id: sessionId });
+      console.log(`[DONE] Selesai memproses sesi: ${sessionId}`);
+      
+    } 
+  } 
+  return new Response(JSON.stringify({ status: "success", message: "Auto-sync publik selesai" }), { 
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+  });
+
+  } catch (error: any) {
+    console.error("Cron Job Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
   }
 });
