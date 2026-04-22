@@ -188,7 +188,7 @@ export default function Footer() {
         {/* Bottom Section */}
         <div className="max-w-7xl mx-auto px-6 mt-20 pt-8 border-t border-[var(--glass-border)] flex flex-col md:grow md:flex-row justify-between items-center gap-6">
           <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.2em]">
-            © 2026 Nismara Group • v1.0.0
+            © 2026 Nismara Group • v1.0.1 • Made with ❤️ from Lemper
           </p>
           <div className="flex items-center gap-8 text-[var(--muted)]">
             <Link
