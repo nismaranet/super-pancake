@@ -38,9 +38,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning // Penting agar tidak error saat switch tema
     >
-      {/* Menghapus 'bg-gray-900 text-white' agar body menggunakan 
-        variabel warna dari globals.css (Dark/Light mode)
-      */}
       <body className="min-h-screen flex flex-col transition-colors duration-300">
         <Providers>
           <Navbar />
