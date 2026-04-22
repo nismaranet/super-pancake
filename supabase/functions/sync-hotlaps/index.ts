@@ -10,7 +10,7 @@ const REWARD = {
   BASE_PARTICIPATION_NRC: -10, // Biaya pendaftaran (Nilai minus)
   NRC_PER_LAP: 1.5,
   XP_PER_LAP: 5,
-  SR_CLEAN_LAP: 0.1,
+  SR_CLEAN_LAP: 0.04,
   // --- HADIAH BASE JUARA (DIKEMBALIKAN) ---
   PODIUM_1_NRC: 200, PODIUM_1_XP: 100,
   PODIUM_2_NRC: 100, PODIUM_2_XP: 50,
@@ -18,8 +18,8 @@ const REWARD = {
 };
 
 const FINES = {
-  COLLISION_CAR_NRC: -10, COLLISION_ENV_NRC: -2, CUT_NRC: -2,
-  COLLISION_CAR_SR: -0.15, COLLISION_ENV_SR: -0.02, CUT_SR: -0.02
+  COLLISION_CAR_NRC: -20, COLLISION_ENV_NRC: -2, CUT_NRC: -2,
+  COLLISION_CAR_SR: -0.20, COLLISION_ENV_SR: -0.02, CUT_SR: -0.05
 };
 
 Deno.serve(async (req) => {
@@ -55,58 +55,6 @@ Deno.serve(async (req) => {
   
         const detail = await sessionRes.json();
 
-        const carToDriverMap = new Map();
-        if (detail.Cars) {
-          detail.Cars.forEach((car: any) => {
-            carToDriverMap.set(car.CarId, car.DriverGuid);
-          });
-        }
-
-        if (detail.Laps && detail.Laps.length > 0) {
-          const cond = detail.Laps[0].Conditions;
-          await supabase.from('session_conditions').insert({
-            session_id: sessionId,
-            ambient_temperature: cond?.AmbientTemp || 0,
-            road_temp: cond?.Road || 0,
-            wind_speed: cond?.WindSpeed || 0,
-            wind_direction: cond?.WindDirection || 0,
-            rain_intensity: cond?.RainIntensity || 0,
-            rain_wetness: cond?.RainWetness || 0,
-          });
-        }
-
-        if (detail.Result && detail.Result.Length > 0) {
-          const positionFinish = detail.Result.indexOf(detail.Result) + 1;
-          const leaderboardData = detail.Result.map((res: any) => ({
-            session_id: sessionId,
-            steam_guild: res.DriverGuid,
-            car_model: res.CarModel,
-            best_lap: res.BestLap,
-            total_time: res.TotalTime,
-            num_laps: res.NumLaps,
-            grid_position: res.positionFinish,
-            status: res.Disqualified ? 'DSQ' : 'FINISH'
-          }));
-          await supabase.from('session_result').upsert(leaderboardData, { onConflict: 'session_id, steam_guild' });
-        }
-
-        if (detail.Events && detail.Events.length > 0) {
-          const incidentData = detail.Events
-          .filter((e: any) => e.Type === 'COLLISION_WITH_CAR' || e.Type === 'COLLISION_WITH_ENV')
-            .map((e: any) => ({
-              session_id: sessionId,
-              incident_type: e.Type,
-              impact_speed: e.ImpactSpeed,
-              driver_1_guid: carToDriverMap.get(e.CarId),
-              driver_2_guid: e.OtherCarId !== -1 ? carToDriverMap.get(e.OtherCarId) : null,
-              timestamp_ms: e.RelPosition 
-            }));
-          
-            if (incidentData.length > 0) {
-              await supabase.from('session_incidents').insert(incidentData);
-            }
-          }
-
         const activeTrackModel = detail.TrackName;
 
         // Tarik data track untuk length
@@ -138,6 +86,7 @@ Deno.serve(async (req) => {
               if (ev.Type === "COLLISION_WITH_ENV") incidents.col_env++;
             }
           });
+
           detail.Laps?.forEach((lap: any) => {
             if (lap.DriverGuid === dr.DriverGuid) incidents.cuts += (lap.Cuts || 0);
           });
@@ -269,6 +218,48 @@ Deno.serve(async (req) => {
             }
           }
 
+          const { error: userHistoryErr } = await supabase.from('user_daily_stats').upsert({
+            user_id: profileMember.steam_guid,
+            record_date: new Date().toISOString().split('T')[0],
+            total_distance_km: dr.NumLaps * trackLengthKm,
+            laps_completed: dr.NumLaps,
+            playing_time: Math.floor(dr.TotalTime / 1000),
+            xp_gained: xpGained,
+            nrc_change: nrcChange,
+            sr_change: srChange,
+            incidents_car: incidents.col_car,
+            incidents_env: incidents.col_env,
+            track_cuts: incidents.cuts
+          }, { onConflict: 'user_id, record_date' });
+
+          if (userHistoryErr) {
+            console.error(`[ERROR USER HISTORY]`, userHistoryErr.message);
+          } else {
+            console.log(`[USER] Daily Stats Saved! User: ${profileMember.steam_guid} | XP: ${xpGained} | NRC: ${nrcChange} | SR: ${srChange}`);
+          }
+
+          const { data: resultData } = await supabase.from('session_results').select('*').eq('session_id', sessionId).eq('profile_id', profileMember.steam_guid).single();
+          await supabase.from('session_results').insert({
+            session_id: sessionId,
+            profile_id: profileMember?.steam_guid,
+            car_model: dr.CarModel,
+            best_lap_ms: dr.BestLap,
+            total_time_ms: dr.TotalTime,
+            num_laps: dr.NumLaps,
+            grid_position: dr.GridPosition,
+            finish_position: position,
+            track: activeTrackModel,
+            num_laps: dr.NumLaps,
+            type: isRace ? 'RACE' : isQualify ? 'QUALIFY' : 'PRACTICE',
+            status: dr.Disqualified === true ? 'DSQ' : 'FINISH'
+          });
+
+          if (resultData) {
+                console.error(`[ERROR RESULT DATA]`, resultData.message);
+              } else {
+                console.log(`[RESULT] Daily Stats Saved! Driver: ${profileMember.steam_guid} | Session: ${sessionId} | Position: #${position}`);
+              }
+        
           // 1. Update Profile
           await supabase.from('profiles').update({
             total_starts: (profileMember.total_starts || 0) + (isRace ? 1 : 0),
@@ -286,7 +277,7 @@ Deno.serve(async (req) => {
           await supabase.from('race_earnings_history').insert({
             steam_guid: dr.DriverGuid,
             session_id: sessionId,
-            session_type: 'unranked',
+            session_type: isRace ? 'RACE' : isQualify ? 'QUALIFY' : 'PRACTICE',
             track_model: activeTrackModel,
             car_model: dr.CarModel,
             laps_completed: dr.NumLaps,
