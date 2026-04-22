@@ -5,6 +5,15 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import {
   Shield,
   Users,
   CheckCircle2,
@@ -30,9 +39,30 @@ export default function TeamHQDashboard() {
   const [activeMembers, setActiveMembers] = useState<any[]>([]);
   const [pendingMembers, setPendingMembers] = useState<any[]>([]);
 
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [chartMetric, setChartMetric] = useState<
+    'total_distance_km' | 'avg_safety_rating' | 'total_xp'
+  >('total_distance_km');
+
   useEffect(() => {
     fetchHQData();
   }, []);
+
+  // Fetch history spesifik untuk tim ini (30 hari terakhir)
+  useEffect(() => {
+    if (myTeam) {
+      const fetchHistory = async () => {
+        const { data } = await supabase
+          .from('team_daily_stats')
+          .select('*')
+          .eq('team_id', myTeam.id)
+          .order('record_date', { ascending: true })
+          .limit(30);
+        setHistoryData(data || []);
+      };
+      fetchHistory();
+    }
+  }, [myTeam]);
 
   const fetchHQData = async () => {
     setLoading(true);
@@ -230,6 +260,96 @@ export default function TeamHQDashboard() {
           </div>
         </div>
       )}
+
+      <div className="bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2.5rem] shadow-xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h3 className="text-xl font-black italic text-white uppercase tracking-tighter">
+              Team Progress Analytics
+            </h3>
+            <p className="text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
+              Historical Performance Data
+            </p>
+          </div>
+
+          {/* Selector Metrik */}
+          <div className="flex bg-[var(--background)] p-1 rounded-xl border border-[var(--card-border)]">
+            <button
+              onClick={() => setChartMetric('total_distance_km')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${chartMetric === 'total_distance_km' ? 'bg-purple-600 text-white' : 'text-[var(--muted)]'}`}
+            >
+              Distance
+            </button>
+            <button
+              onClick={() => setChartMetric('avg_safety_rating')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${chartMetric === 'avg_safety_rating' ? 'bg-purple-600 text-white' : 'text-[var(--muted)]'}`}
+            >
+              Safety Rating
+            </button>
+            <button
+              onClick={() => setChartMetric('total_xp')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${chartMetric === 'total_xp' ? 'bg-purple-600 text-white' : 'text-[var(--muted)]'}`}
+            >
+              EXP Gained
+            </button>
+          </div>
+        </div>
+
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={historyData}>
+              <defs>
+                <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#374151"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="record_date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 'bold' }}
+                tickFormatter={(str) =>
+                  new Date(str).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                  })
+                }
+              />
+              <YAxis
+                hide={true}
+                domain={
+                  chartMetric === 'avg_safety_rating'
+                    ? [0, 5]
+                    : ['auto', 'auto']
+                }
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#111827',
+                  border: '1px solid #374151',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                }}
+                itemStyle={{ color: '#a78bfa', fontWeight: 'bold' }}
+              />
+              <Area
+                type="monotone"
+                dataKey={chartMetric}
+                stroke="#a78bfa"
+                strokeWidth={4}
+                fillOpacity={1}
+                fill="url(#colorMetric)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
       {/* ACTIVE ROSTER MANAGEMENT */}
       <div>
