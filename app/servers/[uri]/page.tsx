@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import LiveServerInfo from '@/components/LiveServerInfo';
+import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import {
   Server,
@@ -11,6 +12,7 @@ import {
   Globe,
   Info,
   Car,
+  Settings2,
 } from 'lucide-react';
 
 export default async function ServerPage({ params }: any) {
@@ -114,14 +116,22 @@ export default async function ServerPage({ params }: any) {
             {/* SERVER DESCRIPTION */}
             {server.description && (
               <section className="bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2rem] shadow-sm transition-colors">
-                <h2 className="text-xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-4 flex items-center gap-3">
+                <h2 className="text-xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-6 flex items-center gap-3">
                   <Info size={20} className="text-blue-500" />
                   Server Briefing
                 </h2>
+
+                {/* RENDERER MARKDOWN */}
                 <div
-                  className="text-[var(--muted)] text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: server.description }}
-                />
+                  className="prose prose-sm max-w-none text-[var(--muted)] leading-relaxed
+                    prose-headings:text-[var(--foreground)] prose-headings:italic prose-headings:font-black
+                    prose-strong:text-purple-400 prose-strong:font-bold
+                    prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+                    prose-li:marker:text-purple-500
+                    whitespace-pre-wrap"
+                >
+                  <ReactMarkdown>{server.description}</ReactMarkdown>
+                </div>
               </section>
             )}
 
@@ -177,6 +187,28 @@ export default async function ServerPage({ params }: any) {
 
           {/* KOLOM KANAN (SIDEBAR: Track Info & Mod Packs) */}
           <div className="space-y-8 lg:col-span-1 sticky top-32">
+            {/* REQUIRED PLUGINS */}
+            {server.required_plugins && (
+              <section className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-md transition-colors">
+                <h3 className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest flex items-center gap-2 mb-4">
+                  <Settings2 size={14} className="text-purple-500" /> Required
+                  Plugins
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {server.required_plugins
+                    .split(',')
+                    .map((plugin: string, index: number) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1.5 bg-[var(--background)] border border-[var(--card-border)] rounded-lg text-[10px] font-bold text-[var(--foreground)] uppercase tracking-widest shadow-sm"
+                      >
+                        {plugin.trim()}
+                      </span>
+                    ))}
+                </div>
+              </section>
+            )}
+
             {/* TRACK INFO */}
             <section className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-[2rem] shadow-md transition-colors">
               <h3 className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest flex items-center gap-2 mb-6">

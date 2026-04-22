@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
+import { getRankDetails } from '@/components/RankBadge';
 import {
   Trophy,
   ShieldCheck,
@@ -18,44 +19,6 @@ import {
   Clock,
 } from 'lucide-react';
 
-// --- HELPERS ---
-const getRankDetails = (sr: number) => {
-  if (sr >= 80)
-    return {
-      label: 'ELITE',
-      color: 'text-cyan-500',
-      border: 'border-cyan-500/50',
-      bg: 'bg-cyan-500/10',
-    };
-  if (sr >= 60)
-    return {
-      label: 'PRO',
-      color: 'text-[var(--accent)]',
-      border: 'border-[var(--accent)]',
-      bg: 'bg-[var(--accent)]/10',
-    };
-  if (sr >= 40)
-    return {
-      label: 'SEMI-PRO',
-      color: 'text-blue-500',
-      border: 'border-blue-500/50',
-      bg: 'bg-blue-500/10',
-    };
-  if (sr >= 20)
-    return {
-      label: 'AMATEUR',
-      color: 'text-emerald-500',
-      border: 'border-emerald-500/50',
-      bg: 'bg-emerald-500/10',
-    };
-  return {
-    label: 'ROOKIE',
-    color: 'text-[var(--muted)]',
-    border: 'border-[var(--card-border)]',
-    bg: 'bg-[var(--background)]',
-  };
-};
-
 const formatPlayingTime = (time: number) => {
   if (!time) return '0h 0m';
   const totalSeconds = time > 10000000 ? Math.floor(time / 1000) : Number(time);
@@ -69,10 +32,6 @@ type LeaderboardCategory =
   | 'total_wins'
   | 'total_podiums'
   | 'total_starts'
-  | 'unranked_safety_rating'
-  | 'unranked_wins'
-  | 'unranked_podiums'
-  | 'unranked_starts'
   | 'total_xp'
   | 'nrc_coin'
   | 'total_distance_km'
@@ -88,7 +47,7 @@ export default function LeaderboardPage() {
   // Struktur Kategori untuk Sidebar (Kanan)
   const categoryGroups = [
     {
-      title: 'Ranked Career',
+      title: 'Career',
       icon: <ShieldCheck size={16} className="text-[var(--accent)]" />,
       items: [
         {
@@ -99,51 +58,21 @@ export default function LeaderboardPage() {
         },
         {
           id: 'total_wins',
-          label: 'Ranked Wins',
+          label: 'Wins',
           icon: <Trophy size={16} />,
           color: 'group-hover:text-yellow-500',
         },
         {
           id: 'total_podiums',
-          label: 'Ranked Podiums',
+          label: 'Podiums',
           icon: <Medal size={16} />,
           color: 'group-hover:text-orange-500',
         },
         {
           id: 'total_starts',
-          label: 'Ranked Starts',
+          label: 'Starts',
           icon: <Flag size={16} />,
           color: 'group-hover:text-blue-500',
-        },
-      ],
-    },
-    {
-      title: 'Casual / Unranked',
-      icon: <Gamepad2 size={16} className="text-[var(--foreground)]" />,
-      items: [
-        {
-          id: 'unranked_safety_rating',
-          label: 'Unranked SR',
-          icon: <ShieldCheck size={16} />,
-          color: 'group-hover:text-[var(--foreground)]',
-        },
-        {
-          id: 'unranked_wins',
-          label: 'Unranked Wins',
-          icon: <Trophy size={16} />,
-          color: 'group-hover:text-yellow-500',
-        },
-        {
-          id: 'unranked_podiums',
-          label: 'Unranked Podiums',
-          icon: <Medal size={16} />,
-          color: 'group-hover:text-orange-500',
-        },
-        {
-          id: 'unranked_starts',
-          label: 'Unranked Starts',
-          icon: <Flag size={16} />,
-          color: 'group-hover:text-emerald-500',
         },
       ],
     },
@@ -192,7 +121,6 @@ export default function LeaderboardPage() {
           `
           username, display_name, avatar_url, driver_level,
           safety_rating, total_wins, total_podiums, total_starts,
-          unranked_safety_rating, unranked_wins, unranked_podiums, unranked_starts,
           total_xp, nrc_coin, total_distance_km, total_playing_time
         `,
         )
@@ -226,8 +154,6 @@ export default function LeaderboardPage() {
     switch (category) {
       case 'safety_rating':
         return (driver.safety_rating || 0).toFixed(2);
-      case 'unranked_safety_rating':
-        return (driver.unranked_safety_rating || 0).toFixed(2);
       case 'total_distance_km':
         return `${(driver.total_distance_km || 0).toFixed(1)} KM`;
       case 'total_playing_time':

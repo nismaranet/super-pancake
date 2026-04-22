@@ -4,7 +4,18 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { encodeSessionId } from '@/lib/encoded';
 import Link from 'next/link';
+import { getRankDetails } from '@/components/RankBadge';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import {
   Trophy,
   ShieldCheck,
@@ -26,44 +37,6 @@ import {
   ChevronDown,
   CheckCircle2,
 } from 'lucide-react';
-
-// Helpers: Rank Label & Warna berdasarkan SR
-const getRankDetails = (sr: number) => {
-  if (sr >= 80)
-    return {
-      label: 'ELITE',
-      color: 'text-cyan-500',
-      border: 'border-cyan-500/50',
-      bg: 'bg-cyan-500/5',
-    };
-  if (sr >= 60)
-    return {
-      label: 'PRO',
-      color: 'text-[var(--accent)]',
-      border: 'border-[var(--accent)]',
-      bg: 'bg-[var(--accent)]/5',
-    };
-  if (sr >= 40)
-    return {
-      label: 'SEMI-PRO',
-      color: 'text-blue-500',
-      border: 'border-blue-500/50',
-      bg: 'bg-blue-500/5',
-    };
-  if (sr >= 20)
-    return {
-      label: 'AMATEUR',
-      color: 'text-emerald-500',
-      border: 'border-emerald-500/50',
-      bg: 'bg-emerald-500/5',
-    };
-  return {
-    label: 'ROOKIE',
-    color: 'text-[var(--muted)]',
-    border: 'border-[var(--card-border)]',
-    bg: 'bg-[var(--card)]',
-  };
-};
 
 // Formatting helpers
 const formatPlayingTime = (time: number) => {
@@ -308,8 +281,8 @@ export default function ProfilePage({
   };
 
   const calculateLevelProgress = (xp: number, level: number) => {
-    const currentLevelBaseXP = (level - 1) * 1000;
-    const nextLevelXP = level * 1000;
+    const currentLevelBaseXP = (level - 1) * 250;
+    const nextLevelXP = level * 250;
     const progress = Math.max(
       0,
       Math.min(
@@ -352,7 +325,7 @@ export default function ProfilePage({
   }
 
   const isOwner = currentUser?.username === profile.username;
-  const rankedDetails = getRankDetails(profile.safety_rating);
+  const rank = getRankDetails(profile.safety_rating || 0);
   const bannerImg =
     profile.banner_url ||
     `https://images.unsplash.com/photo-1547038577-c866986e2eb9?q=80&w=2000&auto=format&fit=crop`;
@@ -360,6 +333,17 @@ export default function ProfilePage({
     profile.total_xp,
     profile.driver_level || 1,
   );
+
+  const upcomingEvents = events.filter((reg) => {
+    if (!reg.events?.event_date) return true;
+
+    const eventDate = new Date(reg.events.event_date);
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    return eventDate >= today;
+  });
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pb-20 transition-colors duration-300">
@@ -387,7 +371,7 @@ export default function ProfilePage({
                     `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.steam_guid}`
                   }
                   alt="Avatar"
-                  className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[6px] border-[var(--card)] object-cover shadow-2xl bg-[var(--background)]"
+                  className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-[6px] ${rank.border} ${rank.color} object-cover shadow-2xl bg-[var(--background)]`}
                 />
               </div>
 
@@ -517,15 +501,20 @@ export default function ProfilePage({
             {trackStats.length > 0 && (
               <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl">
                 <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-4">
-                  <MapPin size={16} className="text-rose-500" /> Favorite Tracks
+                  <MapPin size={16} className="text-rose-500" /> Tracks History
                 </h3>
                 <div className="space-y-3">
                   {trackStats.slice(0, 5).map((track, i) => (
                     <div key={i} className="flex justify-between items-center">
-                      <span className="text-sm font-bold truncate max-w-[250px]">
-                        {trackMap[track.track_model] ||
-                          formatModelName(track.track_model)}
-                      </span>
+                      <Link
+                        href={`/tracks/${track.track_model}`}
+                        className="font-medium hover:text-[var(--accent)] transition-all flex items-center gap-2"
+                      >
+                        <span className="text-sm font-bold truncate max-w-[250px]">
+                          {trackMap[track.track_model] ||
+                            formatModelName(track.track_model)}
+                        </span>
+                      </Link>
                       <span className="text-xs text-[var(--muted)]">
                         {track.total_laps} Laps
                       </span>
@@ -563,19 +552,19 @@ export default function ProfilePage({
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 <div
-                  className={`bg-[var(--card)] border p-6 md:p-8 rounded-[2rem] shadow-xl ${rankedDetails.bg} ${rankedDetails.border}`}
+                  className={`bg-[var(--card)] border p-6 md:p-8 rounded-[2rem] shadow-xl ${rank.bg} ${rank.border}`}
                 >
                   <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
                     <div className="flex items-center gap-4">
-                      <ShieldCheck size={32} className={rankedDetails.color} />
+                      <Gamepad2 size={32} className={rank.color} />
                       <div>
                         <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter">
-                          Ranked Career
+                          Career Stats
                         </h2>
                         <span
-                          className={`text-[9px] md:text-[10px] font-black tracking-widest px-2 py-1 rounded bg-[var(--background)] border ${rankedDetails.border} ${rankedDetails.color}`}
+                          className={`text-[9px] md:text-[10px] font-black tracking-widest px-2 py-1 rounded bg-[var(--background)] border ${rank.border} ${rank.color}`}
                         >
-                          {rankedDetails.label}
+                          {rank.label}
                         </span>
                       </div>
                     </div>
@@ -584,7 +573,7 @@ export default function ProfilePage({
                         Safety Rating
                       </p>
                       <span
-                        className={`text-4xl font-black leading-none ${rankedDetails.color}`}
+                        className={`text-4xl font-black leading-none ${rank.color}`}
                       >
                         {profile.safety_rating?.toFixed(2)}
                       </span>
@@ -618,58 +607,9 @@ export default function ProfilePage({
                   </div>
                 </div>
 
-                <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-[2rem] shadow-xl">
-                  <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
-                    <div className="flex items-center gap-4">
-                      <Gamepad2
-                        size={32}
-                        className="text-[var(--foreground)]"
-                      />
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter">
-                          Casual Play
-                        </h2>
-                        <span className="text-[9px] md:text-[10px] font-black tracking-widest px-2 py-1 rounded bg-[var(--background)] border border-[var(--card-border)] text-[var(--muted)]">
-                          UNRANKED
-                        </span>
-                      </div>
-                    </div>
-                    <div className="md:text-right">
-                      <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-1">
-                        Unranked SR
-                      </p>
-                      <span className="text-4xl font-black leading-none">
-                        {profile.unranked_safety_rating?.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 md:gap-4">
-                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
-                      <span className="block text-2xl md:text-3xl font-black mb-1">
-                        {profile.unranked_wins}
-                      </span>
-                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
-                        Wins
-                      </span>
-                    </div>
-                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
-                      <span className="block text-2xl md:text-3xl font-black mb-1">
-                        {profile.unranked_podiums}
-                      </span>
-                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
-                        Podiums
-                      </span>
-                    </div>
-                    <div className="bg-[var(--background)] p-3 md:p-4 rounded-xl text-center border border-[var(--card-border)]">
-                      <span className="block text-2xl md:text-3xl font-black mb-1">
-                        {profile.unranked_starts}
-                      </span>
-                      <span className="text-[9px] text-[var(--muted)] font-bold uppercase">
-                        Starts
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                {profile?.steam_guid && (
+                  <UserProgressChart steamGuid={profile.steam_guid} />
+                )}
               </div>
             )}
 
@@ -686,87 +626,102 @@ export default function ProfilePage({
                 ) : (
                   <div className="space-y-3">
                     {raceHistory.map((race) => (
-                      <div
+                      <Link
+                        href={`/results/${encodeSessionId(race.session_id)}`}
                         key={race.id}
-                        className="flex flex-col lg:flex-row justify-between lg:items-center p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl gap-4"
                       >
-                        <div className="flex-1 overflow-hidden">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span
-                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${race.session_type === 'ranked' ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-[var(--muted)]/10 text-[var(--muted)]'}`}
-                            >
-                              {race.session_type}
-                            </span>
-                            <span className="text-xs text-[var(--muted)]">
-                              {formatDate(race.created_at)}
-                            </span>
+                        <div
+                          key={race.id}
+                          className="flex flex-col lg:flex-row justify-between lg:items-center p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl gap-4"
+                        >
+                          <div className="flex-1 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${race.session_type === 'RACE' ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-[var(--muted)]/10 text-[var(--muted)]'}`}
+                              >
+                                {race.session_type}
+                              </span>
+                              <span className="text-xs text-[var(--muted)]">
+                                {formatDate(race.created_at)} WIB
+                              </span>
+                            </div>
+                            <p className="font-bold text-sm text-[var(--foreground)] truncate">
+                              {getSessionName(race)}
+                            </p>
+                            <p className="text-xs text-[var(--muted)] flex items-center gap-1 mt-1 truncate">
+                              <Car size={12} />{' '}
+                              {carMap[race.car_model] ||
+                                formatModelName(race.car_model)}{' '}
+                              •{' '}
+                              {trackMap[race.track_model] ||
+                                formatModelName(race.track_model)}{' '}
+                              • {race.laps_completed} Laps
+                            </p>
+                            <div className="flex flex-wrap gap-3 mt-3">
+                              <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
+                                <AlertTriangle
+                                  size={12}
+                                  className="text-yellow-500"
+                                />{' '}
+                                Cuts: {race.track_cuts || 0}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
+                                <Activity size={12} className="text-rose-500" />{' '}
+                                Colls:{' '}
+                                {(race.incidents_car || 0) +
+                                  (race.incidents_env || 0)}
+                              </span>
+                            </div>
                           </div>
-                          <p className="font-bold text-sm text-[var(--foreground)] truncate">
-                            {getSessionName(race)}
-                          </p>
-                          <p className="text-xs text-[var(--muted)] flex items-center gap-1 mt-1 truncate">
-                            <Car size={12} />{' '}
-                            {carMap[race.car_model] ||
-                              formatModelName(race.car_model)}{' '}
-                            •{' '}
-                            {trackMap[race.track_model] ||
-                              formatModelName(race.track_model)}{' '}
-                            • {race.laps_completed} Laps
-                          </p>
-                          <div className="flex flex-wrap gap-3 mt-3">
-                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
-                              <AlertTriangle
-                                size={12}
-                                className="text-yellow-500"
-                              />{' '}
-                              Cuts: {race.track_cuts || 0}
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
-                              <Activity size={12} className="text-rose-500" />{' '}
-                              Colls:{' '}
-                              {(race.incidents_car || 0) +
-                                (race.incidents_env || 0)}
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[var(--muted)]">
-                              <Trophy
-                                size={12}
-                                className="text-[var(--accent)]"
-                              />{' '}
-                              XP: +{race.xp_gained || 0}
-                            </span>
+                          <div className="flex gap-4 items-center bg-[var(--card)] p-3 rounded-lg border border-[var(--card-border)]">
+                            <div className="text-center min-w-[40px] md:min-w-[50px]">
+                              <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
+                                EXP
+                              </p>
+                              <p
+                                className={`text-xs md:text-sm font-black flex items-center justify-center ${race.xp_gained >= 0 ? 'text-sky-500' : 'text-rose-500'}`}
+                              >
+                                {race.xp_gained >= 0 ? (
+                                  <TrendingUp size={12} className="mr-1" />
+                                ) : (
+                                  <TrendingDown size={12} className="mr-1" />
+                                )}
+                                {race.xp_gained > 0 ? '+' : ''}
+                                {race.xp_gained}
+                              </p>
+                            </div>
+                            <div className="w-px h-8 bg-[var(--card-border)]"></div>
+                            <div className="text-center min-w-[40px] md:min-w-[50px]">
+                              <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
+                                SR
+                              </p>
+                              <p
+                                className={`text-xs md:text-sm font-black flex items-center justify-center ${race.sr_change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                              >
+                                {race.sr_change >= 0 ? (
+                                  <TrendingUp size={12} className="mr-1" />
+                                ) : (
+                                  <TrendingDown size={12} className="mr-1" />
+                                )}
+                                {race.sr_change > 0 ? '+' : ''}
+                                {race.sr_change?.toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="w-px h-8 bg-[var(--card-border)]"></div>
+                            <div className="text-center min-w-[40px] md:min-w-[50px]">
+                              <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
+                                NRC
+                              </p>
+                              <p
+                                className={`text-xs md:text-sm font-black flex items-center justify-center ${race.nrc_change >= 0 ? 'text-yellow-500' : 'text-rose-500'}`}
+                              >
+                                {race.nrc_change > 0 ? '+' : ''}
+                                {race.nrc_change}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex gap-4 items-center bg-[var(--card)] p-3 rounded-lg border border-[var(--card-border)]">
-                          <div className="text-center min-w-[40px] md:min-w-[50px]">
-                            <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
-                              SR
-                            </p>
-                            <p
-                              className={`text-xs md:text-sm font-black flex items-center justify-center ${race.sr_change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
-                            >
-                              {race.sr_change >= 0 ? (
-                                <TrendingUp size={12} className="mr-1" />
-                              ) : (
-                                <TrendingDown size={12} className="mr-1" />
-                              )}
-                              {race.sr_change > 0 ? '+' : ''}
-                              {race.sr_change?.toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="w-px h-8 bg-[var(--card-border)]"></div>
-                          <div className="text-center min-w-[40px] md:min-w-[50px]">
-                            <p className="text-[9px] md:text-[10px] text-[var(--muted)] uppercase font-bold">
-                              NRC
-                            </p>
-                            <p
-                              className={`text-xs md:text-sm font-black flex items-center justify-center ${race.nrc_change >= 0 ? 'text-yellow-500' : 'text-rose-500'}`}
-                            >
-                              {race.nrc_change > 0 ? '+' : ''}
-                              {race.nrc_change}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
 
                     {hasMoreHistory && (
@@ -836,13 +791,16 @@ export default function ProfilePage({
                   <h2 className="text-xl font-black italic uppercase tracking-tighter mb-6">
                     Registered Events
                   </h2>
-                  {events.length === 0 ? (
+
+                  {/* Gunakan upcomingEvents.length di sini */}
+                  {upcomingEvents.length === 0 ? (
                     <p className="text-center text-[var(--muted)] text-sm py-10">
-                      Not registered for any events yet.
+                      Not registered for any upcoming events yet.
                     </p>
                   ) : (
                     <div className="space-y-4">
-                      {events.map((reg) => (
+                      {/* Gunakan upcomingEvents.map di sini */}
+                      {upcomingEvents.map((reg) => (
                         <div
                           key={reg.id}
                           className="flex gap-4 p-4 bg-[var(--background)] border border-[var(--card-border)] rounded-xl"
@@ -1003,6 +961,190 @@ export default function ProfilePage({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// KOMPONEN GRAFIK PROGRESS 30 HARI
+// ==========================================
+function UserProgressChart({ steamGuid }: { steamGuid: string }) {
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [chartMetric, setChartMetric] = useState<string>('xp_gained');
+
+  useEffect(() => {
+    if (steamGuid) fetchHistory();
+  }, [steamGuid]);
+
+  const fetchHistory = async () => {
+    setLoading(true);
+
+    // Ambil data 30 hari terakhir
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateString = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('user_daily_stats')
+      .select('*')
+      .eq('user_id', steamGuid)
+      .gte('record_date', dateString)
+      .order('record_date', { ascending: true });
+
+    setHistoryData(data || []);
+    setLoading(false);
+  };
+
+  const getMetricConfig = () => {
+    switch (chartMetric) {
+      case 'xp_gained':
+        return { name: 'EXP Gained', color: '#a78bfa' }; // Purple
+      case 'total_distance_km':
+        return { name: 'Distance (KM)', color: '#3b82f6' }; // Blue
+      case 'sr_change':
+        return { name: 'SR Change', color: '#10b981' }; // Emerald
+      case 'nrc_change':
+        return { name: 'NRC Earned', color: '#eab308' }; // Yellow
+      case 'incidents_car':
+        return { name: 'Car Collisions', color: '#ef4444' }; // Red
+      default:
+        return { name: 'Value', color: '#a78bfa' };
+    }
+  };
+
+  const config = getMetricConfig();
+
+  if (loading)
+    return (
+      <div className="h-72 w-full bg-[var(--card)] rounded-[2.5rem] animate-pulse border border-[var(--card-border)] mt-8" />
+    );
+
+  if (historyData.length === 0)
+    return (
+      <div className="h-48 w-full bg-[var(--card)] rounded-[2.5rem] border border-[var(--card-border)] flex flex-col items-center justify-center text-[var(--muted)] mt-8">
+        <Activity size={32} className="mb-2 opacity-50" />
+        <p className="text-xs font-black uppercase tracking-widest">
+          No Activity in the last 30 Days
+        </p>
+      </div>
+    );
+
+  return (
+    <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 md:p-8 rounded-[2.5rem] shadow-xl w-full mt-8 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform pointer-events-none">
+        <TrendingUp size={120} />
+      </div>
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 relative z-10">
+        <div>
+          <h3 className="text-xl font-black italic text-[var(--foreground)] uppercase tracking-tighter flex items-center gap-2">
+            <Activity size={20} className="text-purple-500" /> 30-Day
+            Performance
+          </h3>
+          <p className="text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
+            Historical Data Analytics
+          </p>
+        </div>
+
+        {/* Metric Selectors */}
+        <div className="flex flex-wrap bg-[var(--background)] p-1 rounded-xl border border-[var(--card-border)] gap-1">
+          {[
+            { id: 'xp_gained', label: 'EXP' },
+            { id: 'total_distance_km', label: 'Distance' },
+            { id: 'sr_change', label: 'SR' },
+            { id: 'nrc_change', label: 'NRC' },
+            { id: 'incidents_car', label: 'Incidents' },
+          ].map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setChartMetric(m.id)}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${
+                chartMetric === m.id
+                  ? 'bg-[var(--accent)] text-white shadow-md'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart Area */}
+      <div className="h-[250px] md:h-[300px] w-full relative z-10">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={historyData}
+            margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={config.color} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={config.color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#374151"
+              vertical={false}
+              opacity={0.5}
+            />
+            <XAxis
+              dataKey="record_date"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 'bold' }}
+              tickFormatter={(str) =>
+                new Date(str).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                })
+              }
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 'bold' }}
+              tickFormatter={(val) =>
+                val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val
+              }
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#111827',
+                border: '1px solid #374151',
+                borderRadius: '16px',
+                fontSize: '12px',
+              }}
+              itemStyle={{
+                color: config.color,
+                fontWeight: 'black',
+                textTransform: 'uppercase',
+              }}
+              labelStyle={{
+                color: '#9ca3af',
+                marginBottom: '4px',
+                fontWeight: 'bold',
+              }}
+              formatter={(value: any) => [
+                typeof value === 'number' && value % 1 !== 0
+                  ? value.toFixed(2)
+                  : value,
+                config.name,
+              ]}
+            />
+            <Area
+              type="monotone"
+              dataKey={chartMetric}
+              stroke={config.color}
+              strokeWidth={4}
+              fillOpacity={1}
+              fill="url(#colorGradient)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

@@ -169,7 +169,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 <Link
-                  href={`/profile/${profile?.username || user.user_metadata?.username || 'profile'}`}
+                  href={`/profile/${profile?.username}`}
                   className="w-10 h-10 rounded-full border-2 border-[var(--accent)] p-0.5 overflow-hidden transition-transform hover:scale-105"
                 >
                   <img
