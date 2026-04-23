@@ -111,7 +111,7 @@ export default async function ServerPage({ params }: any) {
           {/* KOLOM KIRI (Live Server Component & Details) */}
           <div className="lg:col-span-2 space-y-12">
             {/* LIVE SERVER INFO COMPONENT */}
-            <LiveServerInfo server={server} />
+            <LiveServerInfo server={server.live_api_url} />
 
             {/* SERVER DESCRIPTION */}
             {server.description && (
