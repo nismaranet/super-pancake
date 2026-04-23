@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
             total_playing_time: (profileMember.total_playing_time || 0) + Math.floor(dr.TotalTime / 1000),
             total_xp: (profileMember.total_xp || 0) + xpGained,
             nrc_coin: (profileMember.nrc_coin || 0) + nrcChange,
-            safety_rating: Math.max(0, Math.min(100, (profileMember.safety_rating || 2.5) + srChange)),
+            safety_rating: Math.max(0, Math.min(10.0, (profileMember.safety_rating || 2.5) + srChange)),
             updated_at: new Date().toISOString()
           }).eq('steam_guid', dr.DriverGuid);
 
