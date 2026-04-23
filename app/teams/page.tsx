@@ -85,7 +85,7 @@ export default function TeamsIndex() {
             <Shield size={48} className="text-purple-500" /> Team Hub
           </h1>
           <p className="text-[var(--muted)] mt-2 font-medium">
-            Jelajahi atau bangun dinasti e-sports kamu di ekosistem Nismara.
+            Jelajahi berbagai team balap di ekosistem Nismara.
           </p>
         </div>
 
