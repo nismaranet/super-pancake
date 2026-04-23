@@ -113,7 +113,11 @@ export default function Navbar() {
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <Zap size={18} className="text-white fill-white" />
+            <img
+              src="/nismara-racing.svg"
+              alt="Nismara Racing Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="font-black italic text-xl tracking-tighter uppercase">
             NISMARA<span className="text-[var(--accent)]">RACING</span>
@@ -134,12 +138,61 @@ export default function Navbar() {
           <NavLink href="/leaderboard" active={pathname === '/leaderboard'}>
             Standings
           </NavLink>
-          <NavLink href="/cars" active={pathname === '/cars'}>
-            Vehicles
+          <NavLink href="/teams" active={pathname === '/teams'}>
+            Teams
           </NavLink>
-          <NavLink href="/tracks" active={pathname === '/tracks'}>
-            Tracks
-          </NavLink>
+          {/* Dropdown Content */}
+          <div className="relative group">
+            <button
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                pathname.startsWith('/cars') || pathname.startsWith('/tracks')
+                  ? 'bg-[var(--accent)] text-white shadow-lg shadow-purple-500/30'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
+              }`}
+            >
+              Content
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="transition-transform duration-300 group-hover:-rotate-180"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            {/* Anakan Dropdown (Muncul saat Hover) */}
+            <div className="absolute top-full left-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+              <div className="py-2 bg-[var(--background)] border border-[var(--glass-border)] rounded-xl shadow-xl flex flex-col gap-1 backdrop-blur-md">
+                <Link
+                  href="/cars"
+                  className={`px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    pathname.startsWith('/cars')
+                      ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                      : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
+                  }`}
+                >
+                  Vehicles
+                </Link>
+                <Link
+                  href="/tracks"
+                  className={`px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    pathname.startsWith('/tracks')
+                      ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                      : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
+                  }`}
+                >
+                  Tracks
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -221,6 +274,12 @@ export default function Navbar() {
                 Home
               </MobileNavLink>
               <MobileNavLink
+                href="/servers"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Servers
+              </MobileNavLink>
+              <MobileNavLink
                 href="/events"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -233,6 +292,12 @@ export default function Navbar() {
                 Standings
               </MobileNavLink>
               <MobileNavLink
+                href="/teams"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Teams
+              </MobileNavLink>
+              <MobileNavLink
                 href="/cars"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -243,12 +308,6 @@ export default function Navbar() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Tracks
-              </MobileNavLink>
-              <MobileNavLink
-                href="/servers"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Servers
               </MobileNavLink>
             </div>
 

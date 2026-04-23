@@ -89,8 +89,12 @@ export default function Footer() {
           {/* Branding Section */}
           <div className="md:col-span-4 space-y-5">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 racing-gradient rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <Zap size={18} className="text-white fill-white" />
+              <div className="w-8 h-8 racing-gradient rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20 bg-[var(--accent)]">
+                <img
+                  src="/nismara-racing.svg"
+                  alt="Nismara Racing Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="font-black italic text-2xl tracking-tighter uppercase">
                 NISMARA<span className="text-[var(--accent)]">RACING</span>
