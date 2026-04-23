@@ -24,6 +24,7 @@ export default function Home() {
   const [servers, setServers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [carData, setCarData] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentHero, setCurrentHero] = useState(0);
 
@@ -56,9 +57,12 @@ export default function Home() {
 
       const { data: cData } = await supabase.from('cars').select('*');
 
+      const { data: uData } = await supabase.from('profiles').select('*');
+
       if (sData) setServers(sData);
       if (eData) setEvents(eData);
       if (cData) setCarData(cData);
+      if (uData) setUserData(uData);
       setLoading(false);
     }
     fetchData();
@@ -159,8 +163,8 @@ export default function Home() {
               color: 'text-[var(--foreground)]',
             },
             {
-              label: 'Events',
-              val: events.length,
+              label: 'User Registered',
+              val: userData.length,
               color: 'text-[var(--foreground)]',
             },
           ].map((stat, i) => (
