@@ -27,43 +27,42 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // LOGIKA TETAP SAMA SEPERTI SEBELUMNYA
+  // 1. PISAHKAN FUNGSI FETCH PROFILE AGAR BISA DIPANGGIL BERULANG
+  const fetchUserProfile = async (userId: string, isMounted: boolean) => {
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role, username, avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (!isMounted) return;
+
+      if (profileData) {
+        setProfile(profileData);
+        if (profileData.role === 'admin' || profileData.role === 'moderator') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // Efek untuk inisialisasi awal dan listener auth
   useEffect(() => {
     setMounted(true);
     let isMounted = true;
 
     const getUserData = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!isMounted) return;
 
-        if (!isMounted) return;
-
-        if (session) {
-          setUser(session.user);
-
-          // Ambil data profile berdasarkan ID user yang sedang login
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('role, username') // Ambil role untuk admin, username untuk link profile
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileData) {
-            setProfile(profileData); // Simpan data profile ke state
-
-            // Cek Admin
-            if (
-              profileData.role === 'admin' ||
-              profileData.role === 'moderator'
-            ) {
-              setIsAdmin(true);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
+      if (session) {
+        setUser(session.user);
+        await fetchUserProfile(session.user.id, isMounted);
       }
     };
 
@@ -74,8 +73,10 @@ export default function Navbar() {
         if (!isMounted) return;
         if (session) {
           setUser(session.user);
+          fetchUserProfile(session.user.id, isMounted);
         } else {
           setUser(null);
+          setProfile(null);
           setIsAdmin(false);
         }
       },
@@ -87,13 +88,21 @@ export default function Navbar() {
     };
   }, []);
 
+  // 2. TAMBAHKAN LISTENER PATHNAME
+  // Jika user pindah halaman (misal selesai onboarding di /login lalu didorong ke /)
+  // dan username-nya masih kosong, kita paksa fetch ulang data profilnya.
+  useEffect(() => {
+    if (user && (!profile || !profile.username)) {
+      fetchUserProfile(user.id, true);
+    }
+  }, [pathname, user]); // Akan berjalan setiap kali rute URL berubah
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
     setIsMobileMenuOpen(false);
   };
 
-  // Mencegah hydration mismatch
   if (!mounted) return null;
 
   return (
@@ -113,7 +122,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Links (UI Only Change) */}
+        {/* Desktop Links */}
         <div className="hidden lg:flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-[var(--glass-border)]">
           <NavLink href="/" active={pathname === '/'}>
             Home
@@ -130,7 +139,7 @@ export default function Navbar() {
           <NavLink href="/teams" active={pathname === '/teams'}>
             Teams
           </NavLink>
-          {/* Dropdown Content */}
+
           <div className="relative group">
             <button
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
@@ -156,26 +165,17 @@ export default function Navbar() {
               </svg>
             </button>
 
-            {/* Anakan Dropdown (Muncul saat Hover) */}
             <div className="absolute top-full left-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
               <div className="py-2 bg-[var(--background)] border border-[var(--glass-border)] rounded-xl shadow-xl flex flex-col gap-1 backdrop-blur-md">
                 <Link
                   href="/cars"
-                  className={`px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
-                    pathname.startsWith('/cars')
-                      ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
-                  }`}
+                  className="px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5"
                 >
                   Vehicles
                 </Link>
                 <Link
                   href="/tracks"
-                  className={`px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
-                    pathname.startsWith('/tracks')
-                      ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5'
-                  }`}
+                  className="px-4 py-2 mx-2 rounded-lg text-[10px] font-black uppercase tracking-widest text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5"
                 >
                   Tracks
                 </Link>
@@ -186,11 +186,9 @@ export default function Navbar() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
-          {/* Theme Switcher */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2.5 rounded-xl bg-white/5 border border-[var(--glass-border)] hover:border-[var(--accent)] transition-all"
-            aria-label="Toggle Theme"
           >
             {theme === 'dark' ? (
               <Sun size={18} className="text-yellow-400" />
@@ -217,8 +215,11 @@ export default function Navbar() {
                     <LayoutDashboard size={18} />
                   </Link>
                 )}
+                {/* Fallback URL jika profile.username masih loading sepersekian detik */}
                 <Link
-                  href={`/profile/${profile?.username}`}
+                  href={
+                    profile?.username ? `/profile/${profile.username}` : '#'
+                  }
                   className="w-10 h-10 rounded-full border-2 border-[var(--accent)] p-0.5 overflow-hidden transition-transform hover:scale-105"
                 >
                   <img
@@ -248,7 +249,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Hamburger Mobile */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="lg:hidden p-2 text-[var(--muted)]"
@@ -310,8 +310,11 @@ export default function Navbar() {
             <div className="pt-6 border-t border-[var(--glass-border)] flex flex-col gap-3">
               {user ? (
                 <>
+                  {/* 3. PERBAIKAN DI MOBILE MENU: GUNAKAN profile?.username BUKAN user.user_metadata */}
                   <Link
-                    href={`/profile/${user.user_metadata?.username}`}
+                    href={
+                      profile?.username ? `/profile/${profile.username}` : '#'
+                    }
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl font-bold uppercase text-[10px] tracking-widest text-[var(--foreground)]"
                   >
@@ -341,7 +344,6 @@ export default function Navbar() {
   );
 }
 
-// Sub-components untuk konsistensi CSS
 function NavLink({ href, children, active }: any) {
   return (
     <Link
