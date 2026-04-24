@@ -1,15 +1,34 @@
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import {
-  Server,
-  ChevronRight,
-  Activity,
-  Trophy,
-  ChevronLeft,
-  LayoutGrid,
-  User,
-  Calendar,
-} from 'lucide-react';
+import { Metadata } from 'next';
+import { Server, ChevronRight, LayoutGrid, User, Calendar } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Practice Servers | Nismara Racing',
+  description:
+    'Latih skill balapmu di practice server Nismara Racing. Temukan server terbaik dengan performa stabil untuk persiapan kompetisi',
+  openGraph: {
+    title: 'Events - Nismara Racing',
+    description:
+      'Latih skill balapmu di practice server Nismara Racing. Temukan server terbaik dengan performa stabil untuk persiapan kompetisi',
+    images: ['https://i.imgur.com/WTq93jI.png'],
+  },
+  keywords: [
+    'Nismara Racing',
+    'Nismara Group',
+    'Practice Server Nismara Racing',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+    },
+  },
+};
 
 export default async function PracticeServerListPage() {
   // Ambil data server dari database

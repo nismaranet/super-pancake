@@ -4,16 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { DiscordIcon } from '@/components/icons/social';
-import {
-  Zap,
-  ShieldCheck,
-  AlertTriangle,
-  User,
-  IdCard,
-  ArrowRight,
-  Monitor,
-  LogOut,
-} from 'lucide-react';
+import { AlertTriangle, User, IdCard, Monitor, LogOut } from 'lucide-react';
 
 const NISMARA_GUILD_ID = '863959415702028318';
 

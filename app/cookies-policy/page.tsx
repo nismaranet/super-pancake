@@ -9,6 +9,34 @@ import {
   AlertCircle,
   MousePointer2,
 } from 'lucide-react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Cookies Policy | Nismara Racing',
+  description:
+    'Informasi kebijakan cookie Nismara Racing mengenai penggunaan cookie dan teknologi serupa untuk meningkatkan layanan',
+  openGraph: {
+    title: 'Cookies Policy - Nismara Racing',
+    description:
+      'Informasi kebijakan cookie Nismara Racing mengenai penggunaan cookie dan teknologi serupa untuk meningkatkan layanan',
+    images: ['https://i.imgur.com/WTq93jI.png'],
+  },
+  keywords: [
+    'Nismara Racing',
+    'Nismara Group',
+    'Cookies Policy Nismara Racing',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+    },
+  },
+};
 
 export default function CookiesPolicy() {
   return (

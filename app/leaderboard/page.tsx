@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Search,
   Wallet,
-  Gamepad2,
   Route,
   Clock,
 } from 'lucide-react';
@@ -47,7 +46,7 @@ export default function LeaderboardPage() {
   // Struktur Kategori untuk Sidebar (Kanan)
   const categoryGroups = [
     {
-      title: 'Career',
+      title: 'Career Stats',
       icon: <ShieldCheck size={16} className="text-[var(--accent)]" />,
       items: [
         {

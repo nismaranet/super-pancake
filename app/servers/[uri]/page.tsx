@@ -118,7 +118,7 @@ export default async function ServerPage({ params }: any) {
               <section className="bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2rem] shadow-sm transition-colors">
                 <h2 className="text-xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-6 flex items-center gap-3">
                   <Info size={20} className="text-blue-500" />
-                  Server Briefing
+                  Server Information
                 </h2>
 
                 {/* RENDERER MARKDOWN */}
@@ -138,7 +138,7 @@ export default async function ServerPage({ params }: any) {
             {/* ASSIGNED VEHICLES */}
             <section className="pt-4 border-t border-[var(--card-border)]">
               <h2 className="text-2xl font-black italic text-[var(--foreground)] uppercase tracking-tighter flex items-center gap-3 mb-8">
-                <Car className="text-blue-500" size={24} /> Approved Vehicles
+                <Car className="text-blue-500" size={24} /> List Vehicles
               </h2>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
