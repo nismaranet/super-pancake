@@ -8,24 +8,13 @@ import {
   LogIn,
   LogOut,
   LayoutDashboard,
-  Home,
-  Calendar,
-  Gamepad2,
-  Car,
-  MapPin,
-  Server,
   Menu,
   X,
   User,
-  Zap,
-  Sun, // Tambahkan ini
-  Moon, // Tambahkan ini
+  Sun,
+  Moon,
 } from 'lucide-react';
-import {
-  DiscordIcon,
-  InstagramIcon,
-  YoutubeIcon,
-} from '@/components/icons/social';
+import { DiscordIcon } from '@/components/icons/social';
 import { useTheme } from 'next-themes';
 
 export default function Navbar() {
@@ -136,7 +125,7 @@ export default function Navbar() {
             Events
           </NavLink>
           <NavLink href="/leaderboard" active={pathname === '/leaderboard'}>
-            Standings
+            Leaderboard
           </NavLink>
           <NavLink href="/teams" active={pathname === '/teams'}>
             Teams
@@ -209,6 +198,13 @@ export default function Navbar() {
               <Moon size={18} className="text-blue-500" />
             )}
           </button>
+
+          <Link
+            href="https://link.nismara.web.id/discord"
+            className="p-2.5 text-[var(--accent)] bg-[var(--accent-glow)] rounded-xl transition-all border border-transparent hover:border-[var(--accent)]"
+          >
+            <DiscordIcon />
+          </Link>
 
           <div className="hidden md:flex items-center gap-3">
             {user ? (
