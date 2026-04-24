@@ -157,12 +157,17 @@ export default function LoginPage() {
         return;
       }
 
+      const discordId = sessionData.user.identities?.find(
+        (identity: any) => identity.provider === 'discord',
+      )?.id;
+
       const { error } = await supabase
         .from('profiles')
         .update({
           username: cleanUser,
           display_name: cleanDisplay,
           steam_guid: cleanSteam,
+          discord_id: discordId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', sessionData.user.id);
