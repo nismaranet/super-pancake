@@ -36,6 +36,10 @@ import {
   MapPin,
   ChevronDown,
   CheckCircle2,
+  Shield,
+  Crown,
+  User,
+  ChevronRight,
 } from 'lucide-react';
 
 // Formatting helpers
@@ -129,7 +133,20 @@ export default function ProfilePage({
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(
+          `*,
+          team_members (
+          role,
+          status,
+            teams (
+              name,
+              tag,
+              uri,
+              logo_url
+            )
+          )
+        `,
+        )
         .eq('username', username)
         .single();
 
@@ -223,6 +240,9 @@ export default function ProfilePage({
 
     fetchData();
   }, [username]);
+
+  const userMembership = profile?.team_members?.[0];
+  const activeTeam = userMembership?.teams;
 
   const loadMoreHistory = async () => {
     if (!profile?.steam_guid || loadingMore) return;
@@ -454,6 +474,67 @@ export default function ProfilePage({
                 </div>
               )}
             </div>
+
+            {activeTeam && (
+              <div className="mt-8 glass rounded-2xl p-6 border-[var(--glass-border)] shadow-xl relative overflow-hidden group">
+                {/* Dekorasi Background */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/10 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10"></div>
+
+                <div className="flex items-center gap-5 relative z-10">
+                  {/* Logo Tim */}
+                  <div className="w-16 h-16 shrink-0 rounded-xl bg-black/40 border-2 border-[var(--glass-border)] overflow-hidden shadow-lg group-hover:border-[var(--accent)]/50 transition-colors">
+                    {activeTeam.logo_url ? (
+                      <img
+                        src={activeTeam.logo_url}
+                        alt={activeTeam.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[var(--muted)] bg-gradient-to-br from-white/5 to-white/10">
+                        <Shield size={24} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info Tim */}
+                  <div className="flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">
+                      Current Team
+                    </p>
+                    <Link
+                      href={`/teams/${activeTeam.uri}`}
+                      className="hover:text-[var(--accent)] transition-colors"
+                    >
+                      <h3 className="text-lg font-black italic uppercase tracking-tighter leading-none flex items-center gap-2">
+                        {activeTeam.name}
+                        <span className="px-2 py-0.5 rounded-md bg-white/10 text-[9px] tracking-widest text-[var(--muted)] not-italic">
+                          [{activeTeam.tag}]
+                        </span>
+                      </h3>
+                    </Link>
+                    <div className="flex items-center gap-2 mt-2">
+                      {userMembership?.role === 'owner' ? (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-yellow-500">
+                          <Crown size={12} /> Team Owner
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">
+                          <User size={12} /> {userMembership?.role || 'Driver'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <Link
+                    href={`/teams/${activeTeam.uri}`}
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white/5 border border-[var(--glass-border)] flex items-center justify-center text-[var(--muted)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] transition-all group-hover:scale-105"
+                  >
+                    <ChevronRight size={20} />
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {/* Telemetry Card */}
             <div className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-xl space-y-4">

@@ -320,7 +320,7 @@ export default function CarDetailPage() {
               Power & Torque vs Engine Speed (RPM)
             </p>
 
-            <div className="h-[400px] w-full">
+            <div className="w-full h-[400px] mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}

@@ -25,6 +25,28 @@ export const metadata: Metadata = {
   title: 'Nismara Racing - Sim Racing Community Indonesia by Nismara Group',
   description:
     'Komunitas Sim Racing Indonesia yang didirikan oleh Nismara Group. Bergabunglah dengan kami untuk pengalaman balap virtual terbaik dan server balap yang seru!',
+  openGraph: {
+    title: 'Nismara Racing - Sim Racing Community Indonesia by Nismara Group',
+    description:
+      'Komunitas Sim Racing Indonesia yang didirikan oleh Nismara Group. Bergabunglah dengan kami untuk pengalaman balap virtual terbaik dan server balap yang seru!',
+    images: ['https://i.imgur.com/WTq93jI.png'],
+  },
+  keywords: [
+    'Nismara Racing',
+    'Nismara Racing Indonesia',
+    'Nismara Group',
+    'Nismara Transport Group',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+    },
+  },
 };
 
 export default function RootLayout({

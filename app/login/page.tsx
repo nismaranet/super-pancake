@@ -4,16 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { DiscordIcon } from '@/components/icons/social';
-import {
-  Zap,
-  ShieldCheck,
-  AlertTriangle,
-  User,
-  IdCard,
-  ArrowRight,
-  Monitor,
-  LogOut,
-} from 'lucide-react';
+import { AlertTriangle, User, IdCard, Monitor, LogOut } from 'lucide-react';
 
 const NISMARA_GUILD_ID = '863959415702028318';
 
@@ -166,12 +157,17 @@ export default function LoginPage() {
         return;
       }
 
+      const discordId = sessionData.user.identities?.find(
+        (identity: any) => identity.provider === 'discord',
+      )?.id;
+
       const { error } = await supabase
         .from('profiles')
         .update({
           username: cleanUser,
           display_name: cleanDisplay,
           steam_guid: cleanSteam,
+          discord_id: discordId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', sessionData.user.id);
@@ -283,14 +279,18 @@ export default function LoginPage() {
             <div className="text-center">
               <div className="mb-8 flex justify-center">
                 <div className="p-4 bg-gradient-to-br from-purple-500 to-blue-500 rounded-3xl shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <Zap size={32} className="text-white" fill="white" />
+                  <img
+                    src="/nismara-racing.svg"
+                    alt="Nismara Racing Logo"
+                    className="w-20 h-20 object-contain"
+                  />
                 </div>
               </div>
 
               {step === 'login' && (
                 <>
                   <h1 className="text-3xl font-black italic text-[var(--foreground)] uppercase tracking-tighter mb-10">
-                    Nismara <span className="text-blue-500">Hub</span>
+                    Nismara <span className="text-blue-500">Racing Hub</span>
                   </h1>
                   <button
                     onClick={() => {
