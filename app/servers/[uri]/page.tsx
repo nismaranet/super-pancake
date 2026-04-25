@@ -187,6 +187,27 @@ export default async function ServerPage({ params }: any) {
 
           {/* KOLOM KANAN (SIDEBAR: Track Info & Mod Packs) */}
           <div className="space-y-8 lg:col-span-1 sticky top-32">
+            {/* MOD PACKS */}
+            {server.join_link && (
+              <section className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-md transition-colors">
+                <h3 className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest flex items-center gap-2 mb-4">
+                  <Server size={14} className="text-blue-500" /> Join Server
+                </h3>
+                <p className="text-[10px] text-[var(--muted)] leading-relaxed mb-4 italic font-medium">
+                  Pastikan kamu sudah mendownload semua konten (cars/track) dan
+                  plugin sebelum melakukan join ke dalam server
+                </p>
+                <a
+                  href={server.join_link}
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-red-500 hover:bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] active:scale-[0.98]"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Join Server
+                </a>
+              </section>
+            )}
+
             {/* REQUIRED PLUGINS */}
             {server.required_plugins && (
               <section className="bg-[var(--card)] border border-[var(--card-border)] p-6 rounded-[2rem] shadow-md transition-colors">
