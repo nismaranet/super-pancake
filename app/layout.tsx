@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'Y2oIpUQn-6CiJNU-hIkuga',
+    google: 'Y2oIpUQn-6CiJNU-hIkuga1RRPYbBDgDMPS4LRUXE40',
     yandex: '4563dd27e30a2d99',
     other: {
       'msvalidate.01': '8DF8DC629EA75F95928BCD35B959096E',
