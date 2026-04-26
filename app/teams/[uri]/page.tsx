@@ -288,57 +288,6 @@ export default function TeamPublicProfile() {
             <h1 className="text-4xl md:text-7xl font-black italic text-[var(--foreground)] uppercase tracking-tighter leading-[0.8] mb-4">
               {team.name}
             </h1>
-
-            {/* Action Button: Join Team Logic */}
-            {userProfile && (
-              <div className="mt-4">
-                {userMemberStatus ? (
-                  userMemberStatus.status === 'active' ? (
-                    userMemberStatus.team_id === team?.id ? (
-                      <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">
-                        <CheckCircle2 size={14} /> You are a member
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800 border border-zinc-700 text-zinc-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">
-                        <Shield size={14} /> Already in another team
-                      </div>
-                    )
-                  ) : (
-                    // Tampilan jika status 'pending'
-                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px]">
-                      <Clock size={14} className="animate-pulse" /> Request
-                      Pending
-                    </div>
-                  )
-                ) : (
-                  <button
-                    onClick={handleJoinTeam}
-                    disabled={!userProfile.steam_guid || isSubmitting}
-                    className={`inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg ${
-                      userProfile.steam_guid
-                        ? isSubmitting
-                          ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:scale-105 shadow-purple-500/20'
-                        : 'bg-red-600 text-white cursor-not-allowed'
-                    }`}
-                  >
-                    {userProfile.steam_guid ? (
-                      isSubmitting ? (
-                        'Processing...'
-                      ) : (
-                        <>
-                          <Plus size={16} /> Request to Join
-                        </>
-                      )
-                    ) : (
-                      <>
-                        <AlertCircle size={16} /> Assign Steam GUID First
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Stats */}
@@ -446,6 +395,57 @@ export default function TeamPublicProfile() {
                     >
                       <Settings size={16} /> Go to Team HQ
                     </button>
+                  </div>
+                )}
+
+                {/* Action Button: Join Team Logic */}
+                {userProfile && (
+                  <div className="mt-4">
+                    {userMemberStatus ? (
+                      userMemberStatus.status === 'active' ? (
+                        userMemberStatus.team_id === team?.id ? (
+                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-500/10 border border-green-500/20 text-green-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">
+                            <CheckCircle2 size={14} /> You are a member
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800 border border-zinc-700 text-zinc-500 rounded-2xl font-black uppercase tracking-widest text-[10px]">
+                            <Shield size={14} /> Already in another team
+                          </div>
+                        )
+                      ) : (
+                        // Tampilan jika status 'pending'
+                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px]">
+                          <Clock size={14} className="animate-pulse" /> Request
+                          Pending
+                        </div>
+                      )
+                    ) : (
+                      <button
+                        onClick={handleJoinTeam}
+                        disabled={!userProfile.steam_guid || isSubmitting}
+                        className={`inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg ${
+                          userProfile.steam_guid
+                            ? isSubmitting
+                              ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:scale-105 shadow-purple-500/20'
+                            : 'bg-red-600 text-white cursor-not-allowed'
+                        }`}
+                      >
+                        {userProfile.steam_guid ? (
+                          isSubmitting ? (
+                            'Processing...'
+                          ) : (
+                            <>
+                              <Plus size={16} /> Request to Join
+                            </>
+                          )
+                        ) : (
+                          <>
+                            <AlertCircle size={16} /> Assign Steam GUID First
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
