@@ -9,6 +9,8 @@ import {
   Shield,
   Image as ImageIcon,
   AlertTriangle,
+  Link as LinkIcon,
+  FileText,
 } from 'lucide-react';
 
 export default function TeamSettingsHQ() {
@@ -19,6 +21,8 @@ export default function TeamSettingsHQ() {
   // Form States
   const [editName, setEditName] = useState('');
   const [editTag, setEditTag] = useState('');
+  const [editUri, setEditUri] = useState('');
+  const [editBio, setEditBio] = useState('');
 
   // File Upload States
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -47,7 +51,7 @@ export default function TeamSettingsHQ() {
       .maybeSingle();
 
     if (membership && membership.teams) {
-      // PERBAIKAN: Penanganan tipe Array dari Supabase
+      // Penanganan tipe Array dari Supabase
       const team = Array.isArray(membership.teams)
         ? membership.teams[0]
         : membership.teams;
@@ -56,6 +60,8 @@ export default function TeamSettingsHQ() {
         setMyTeam(team);
         setEditName(team.name || '');
         setEditTag(team.tag || '');
+        setEditUri(team.uri || '');
+        setEditBio(team.bio || '');
         setLogoPreview(team.logo_url || '');
         setBannerPreview(team.banner_url || '');
       } else {
@@ -71,7 +77,6 @@ export default function TeamSettingsHQ() {
   // ================= R2 UPLOAD LOGIC =================
   const uploadToR2 = async (file: File, folder: string) => {
     try {
-      // 1. Minta Presigned URL dari API kamu
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -85,7 +90,6 @@ export default function TeamSettingsHQ() {
       const { signedUrl, publicUrl, error } = await res.json();
       if (error) throw new Error(error);
 
-      // 2. Upload file fisik langsung ke Cloudflare R2
       const uploadRes = await fetch(signedUrl, {
         method: 'PUT',
         body: file,
@@ -109,7 +113,6 @@ export default function TeamSettingsHQ() {
     let finalLogoUrl = myTeam.logo_url;
     let finalBannerUrl = myTeam.banner_url;
 
-    // Proses upload jika ada file baru yang dipilih
     if (logoFile) {
       const url = await uploadToR2(logoFile, 'teams/logos');
       if (url) finalLogoUrl = url;
@@ -120,12 +123,16 @@ export default function TeamSettingsHQ() {
       if (url) finalBannerUrl = url;
     }
 
-    // Update Supabase Database
+    // Format URI agar selalu lowercase dan tanpa spasi (diganti hyphen)
+    const formattedUri = editUri.toLowerCase().replace(/\s+/g, '-');
+
     const { error } = await supabase
       .from('teams')
       .update({
         name: editName,
         tag: editTag.toUpperCase(),
+        uri: formattedUri,
+        bio: editBio,
         logo_url: finalLogoUrl,
         banner_url: finalBannerUrl,
       })
@@ -135,16 +142,26 @@ export default function TeamSettingsHQ() {
       alert('Gagal mengupdate: ' + error.message);
     } else {
       alert('✅ Team Profile Berhasil Diperbarui!');
-      router.push(`/team/${myTeam.uri || myTeam.id}`); // Pastikan redirect ke profil publik yang benar
+      router.push(`/teams/${formattedUri || myTeam.id}`);
     }
 
     setIsSubmitting(false);
   };
 
   // ================= UI HANDLERS =================
+  const MAX_FILE_SIZE = 4 * 1024 * 1024;
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+
+      // Validasi ukuran file
+      if (file.size > MAX_FILE_SIZE) {
+        alert('Ukuran file Logo terlalu besar! Maksimal 4MB.');
+        e.target.value = ''; // Reset input agar user bisa memilih ulang file yang sama
+        return;
+      }
+
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -153,6 +170,14 @@ export default function TeamSettingsHQ() {
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+
+      // Validasi ukuran file
+      if (file.size > MAX_FILE_SIZE) {
+        alert('Ukuran file Banner terlalu besar! Maksimal 4MB.');
+        e.target.value = ''; // Reset input agar user bisa memilih ulang file yang sama
+        return;
+      }
+
       setBannerFile(file);
       setBannerPreview(URL.createObjectURL(file));
     }
@@ -179,7 +204,7 @@ export default function TeamSettingsHQ() {
         className="space-y-8 bg-[var(--card)] border border-[var(--card-border)] p-8 rounded-[2.5rem] shadow-xl"
       >
         {/* IDENTITAS TIM */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-[var(--card-border)] pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest ml-1">
               Team Name
@@ -205,6 +230,43 @@ export default function TeamSettingsHQ() {
           </div>
         </div>
 
+        {/* TEAM URI */}
+        <div className="space-y-2 border-b border-[var(--card-border)] pb-8">
+          <label className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest ml-1 flex items-center gap-2">
+            <LinkIcon size={12} /> Team URL / URI
+          </label>
+          <div className="flex bg-[var(--background)] border border-[var(--card-border)] rounded-xl overflow-hidden focus-within:border-[var(--accent)] transition-all">
+            <span className="px-4 py-4 text-[var(--muted)] font-medium bg-black/20 border-r border-[var(--card-border)] text-sm">
+              racing.nismara.web.id/teams/
+            </span>
+            <input
+              required
+              value={editUri}
+              onChange={(e) => setEditUri(e.target.value)}
+              placeholder="nama-tim-keren"
+              className="w-full bg-transparent text-[var(--foreground)] p-4 outline-none font-bold"
+            />
+          </div>
+          <p className="text-[10px] text-amber-500 font-medium ml-1">
+            *Mengubah URI akan merubah tautan publik tim Anda. Gunakan huruf dan
+            tanda hubung (-).
+          </p>
+        </div>
+
+        {/* TEAM BIO (MARKDOWN) */}
+        <div className="space-y-2 border-b border-[var(--card-border)] pb-8">
+          <label className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest ml-1 flex items-center gap-2">
+            <FileText size={12} /> Team Bio (Markdown Supported)
+          </label>
+          <textarea
+            value={editBio}
+            onChange={(e) => setEditBio(e.target.value)}
+            rows={6}
+            placeholder="Ceritakan tentang tim Anda di sini. Mendukung styling dengan Markdown (contoh: **Tebal**, *Miring*, atau list)..."
+            className="w-full bg-[var(--background)] border border-[var(--card-border)] text-[var(--foreground)] p-4 rounded-xl outline-none focus:border-[var(--accent)] transition-all font-medium resize-y"
+          />
+        </div>
+
         {/* TEAM LOGO UPLOAD */}
         <div className="border-b border-[var(--card-border)] pb-8">
           <label className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest ml-1 mb-4 block">
@@ -223,7 +285,7 @@ export default function TeamSettingsHQ() {
                 <UploadCloud size={16} /> Choose Image
                 <input
                   type="file"
-                  accept="image/png, image/jpeg"
+                  accept="image/*"
                   className="hidden"
                   onChange={handleLogoChange}
                 />
@@ -261,7 +323,7 @@ export default function TeamSettingsHQ() {
               <UploadCloud size={16} /> Upload New Banner
               <input
                 type="file"
-                accept="image/png, image/jpeg"
+                accept="image/*"
                 className="hidden"
                 onChange={handleBannerChange}
               />
@@ -284,7 +346,7 @@ export default function TeamSettingsHQ() {
           className="w-full bg-[var(--accent)] hover:opacity-90 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition-all mt-8"
         >
           {isSubmitting ? (
-            'Uploading to R2 & Saving...'
+            'Uploading to Nismara Server & Saving...'
           ) : (
             <>
               <Save size={18} /> Update Team Assets

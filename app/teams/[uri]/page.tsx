@@ -261,7 +261,7 @@ export default function TeamPublicProfile() {
       </div>
 
       {/* Team Info Header */}
-      <div className="max-w-7xl mx-auto px-4 -mt-24 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 -mt-24 relative z-30">
         <div className="flex flex-col md:flex-row items-end gap-6 md:gap-10 mb-12">
           {/* Logo */}
           <div className="w-40 h-40 md:w-52 md:h-52 bg-[var(--card)] rounded-[2.5rem] border-[10px] border-[var(--background)] shadow-2xl overflow-hidden flex items-center justify-center shrink-0">

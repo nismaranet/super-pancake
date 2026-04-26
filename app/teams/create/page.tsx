@@ -91,8 +91,8 @@ export default function CreateTeamPage() {
     if (!file) return;
 
     // Validasi ukuran (misal max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setError(`File ${type} terlalu besar. Maksimal 2MB.`);
+    if (file.size > 4 * 1024 * 1024) {
+      setError(`File ${type} terlalu besar. Maksimal 4MB.`);
       return;
     }
 
