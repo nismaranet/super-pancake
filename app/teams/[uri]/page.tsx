@@ -169,29 +169,27 @@ export default function TeamPublicProfile() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('team_members').insert([
-      {
-        team_id: team.id,
-        profile_id: userProfile.id,
-        role: 'member',
-        status: 'pending',
-        joined_at: new Date().toISOString(),
-      },
-    ]);
+    // Gunakan .select().single() agar langsung mengembalikan data yang di-insert
+    const { data, error } = await supabase
+      .from('team_members')
+      .insert([
+        {
+          team_id: team.id,
+          profile_id: userProfile.id,
+          role: 'member',
+          status: 'pending',
+          joined_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error('Error joining team:', error.message);
       alert('Gagal mengirim permintaan join: ' + error.message);
-    } else {
-      // Refresh data status member tanpa reload page
-      const { data: newStatus } = await supabase
-        .from('team_members')
-        .select('*')
-        .eq('profile_id', userProfile.id)
-        .eq('team_id', team.id)
-        .single();
-
-      setUserMemberStatus(newStatus);
+    } else if (data) {
+      // Langsung set state dari data yang dikembalikan Supabase
+      setUserMemberStatus(data);
     }
 
     setIsSubmitting(false);
