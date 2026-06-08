@@ -28,6 +28,7 @@ export default function TracksAdmin() {
   // ================= FORM STATES =================
   const [name, setName] = useState('');
   const [uri, setUri] = useState('');
+  const [model, setModel] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -147,6 +148,7 @@ export default function TracksAdmin() {
     const trackData = {
       name,
       uri,
+      track_model: model,
       image_url: imageUrl,
       download_url: downloadUrl,
       description,
@@ -187,6 +189,7 @@ export default function TracksAdmin() {
     setEditingId(track.id);
     setName(track.name || '');
     setUri(track.uri || '');
+    setModel(track.track_model || '');
     setImageUrl(track.image_url || '');
     setDownloadUrl(track.download_url || '');
     setDescription(track.description || '');
@@ -206,6 +209,7 @@ export default function TracksAdmin() {
   function resetForm() {
     setName('');
     setUri('');
+    setModel('');
     setImageUrl('');
     setDownloadUrl('');
     setDescription('');
@@ -326,6 +330,19 @@ export default function TracksAdmin() {
                     placeholder="e.g. mandalika-international-circuit"
                     value={uri}
                     onChange={(e) => setUri(e.target.value)}
+                    className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-orange-500 outline-none transition text-sm text-white"
+                    required
+                  />
+                </div>
+
+                <div className="group">
+                  <label className="text-[10px] text-gray-500 uppercase font-bold ml-1 transition group-focus-within:text-orange-500">
+                    Track Model
+                  </label>
+                  <input
+                    placeholder="e.g. fn_nurburgring"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
                     className="w-full mt-1 p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-orange-500 outline-none transition text-sm text-white"
                     required
                   />
